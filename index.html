@@ -437,9 +437,10 @@ async function saveCard() {
     note:   document.getElementById('mNote').value.trim(),
   };
   if (!data.name) { alert('Coloque ao menos o nome.'); return; }
+  const id = editingId;
   closeModal();
-  if (editingId) {
-    await updateClient(editingId, data);
+  if (id) {
+    await updateClient(id, data);
   } else {
     activeList = data.list;
     await insertClient(data);
@@ -450,8 +451,9 @@ async function saveCard() {
 async function deleteCard() {
   if (!editingId) return;
   if (!confirm('Excluir este cliente?')) return;
+  const id = editingId;
   closeModal();
-  await deleteClient(editingId);
+  await deleteClient(id);
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
