@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM Eventos — Confirmação de Clientes</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1419; --bg2: #161d26; --surface: #1c2530; --surface2: #232e3b;
+    --ink: #f3f6f9; --ink-soft: #9aa7b5; --ink-dim: #6b7886;
+    --line: #2a3744; --line-soft: #344150;
+    --brand: #34d399; --brand-dark: #10b981; --brand-deep: #065f46;
+    --blue: #60a5fa; --amber: #fbbf24; --green: #34d399; --coral: #fb923c; --red: #f87171;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .topbar { background: linear-gradient(120deg, #0d3d33 0%, #0f1419 70%); border-bottom: 1px solid var(--line); padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; position: sticky; top: 0; z-index: 50; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 19px; color: #06281f; flex-shrink: 0; box-shadow: 0 2px 12px rgba(52,211,153,0.35); }
+  .brand .txt h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .brand .txt span { font-size: 12px; color: var(--ink-soft); }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button { font-family: inherit; font-size: 13px; border: 1px solid var(--line-soft); background: var(--surface); color: var(--ink); padding: 9px 15px; border-radius: 9px; cursor: pointer; transition: all 0.15s; font-weight: 600; }
+  button:hover { border-color: var(--brand); background: var(--surface2); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: var(--brand); color: #06281f; border-color: var(--brand); }
+  button.primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+  .stats { display: flex; gap: 12px; padding: 18px 28px; background: var(--bg2); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .stat { display: flex; flex-direction: column; background: var(--surface); padding: 12px 18px; border-radius: 11px; border: 1px solid var(--line); min-width: 110px; }
+  .stat .num { font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 10px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; font-weight: 600; }
+  .tabs { display: flex; gap: 6px; padding: 16px 28px 0; background: var(--bg2); flex-wrap: wrap; }
+  .tab { padding: 10px 18px; border: 1px solid var(--line); border-bottom: none; border-radius: 10px 10px 0 0; cursor: pointer; font-size: 13px; font-weight: 600; background: transparent; color: var(--ink-soft); transition: all 0.15s; }
+  .tab:hover { color: var(--ink); background: var(--surface); }
+  .tab.active { background: var(--surface); color: var(--brand); position: relative; top: 1px; border-color: var(--line-soft); }
+  .tab .count { background: rgba(255,255,255,0.08); border-radius: 20px; padding: 2px 9px; font-size: 11px; margin-left: 8px; font-weight: 700; }
+  .tab.active .count { background: var(--brand); color: #06281f; }
+  .board-wrap { padding: 22px 28px 48px; background: var(--bg); min-height: 60vh; }
+  .board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  @media (max-width: 1100px) { .board { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .board { grid-template-columns: 1fr; } }
+  .col { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-height: 220px; display: flex; flex-direction: column; }
+  .col-head { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 8px currentColor; }
+  .col-head .title { font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; }
+  .col-head .c { font-size: 12px; color: var(--ink-dim); margin-left: auto; font-weight: 600; background: var(--surface); padding: 2px 9px; border-radius: 20px; }
+  .cards { display: flex; flex-direction: column; gap: 9px; flex: 1; min-height: 40px; }
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-left-width: 3px; border-radius: 11px; padding: 12px 13px; cursor: grab; transition: all 0.15s; }
+  .card:hover { border-color: var(--ink-dim); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+  .card.dragging { opacity: 0.4; }
+  .card.alert { border-color: var(--red); box-shadow: 0 0 0 1px rgba(248,113,113,0.4); }
+  .card .name { font-size: 13px; font-weight: 700; margin-bottom: 4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; letter-spacing: -0.01em; }
+  .card .prod { font-size: 10px; color: var(--brand); background: rgba(52,211,153,0.12); padding: 2px 7px; border-radius: 6px; font-weight: 600; }
+  .card .phone { font-size: 12px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+  .card .wa { color: var(--brand); text-decoration: none; font-weight: 600; }
+  .card .wa:hover { text-decoration: underline; }
+  .card .note { font-size: 11px; color: var(--ink-soft); margin-top: 8px; font-style: italic; border-top: 1px dashed var(--line-soft); padding-top: 6px; }
+  .card .tries { display:flex; align-items:center; justify-content:space-between; margin-top:9px; padding-top:8px; border-top:1px solid var(--line); }
+  .tries-dots { display:flex; gap:4px; }
+  .tdot { width:15px; height:15px; border-radius:50%; border:1.5px solid var(--line-soft); font-size:9px; display:flex; align-items:center; justify-content:center; color:#06281f; font-weight:700; }
+  .tdot.on { background: var(--amber); border-color: var(--amber); }
+  .tdot.max { background: var(--red); border-color: var(--red); color:#fff; }
+  .try-btn { font-size:10px; padding:4px 9px; border-radius:7px; font-weight:600; }
+  .alert-tag { font-size:9px; background: rgba(248,113,113,0.15); color: var(--red); padding:2px 7px; border-radius:6px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em; }
+  .col.drop-target { background: rgba(52,211,153,0.06); border-color: var(--brand); }
+  .empty-hint { font-size: 12px; color: var(--ink-dim); text-align: center; padding: 24px 0; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; padding: 26px; width: 100%; max-width: 430px; max-height:90vh; overflow:auto; }
+  .modal h3 { font-size: 17px; margin-bottom: 18px; font-weight: 700; }
+  .modal label { display: block; font-size: 11px; color: var(--ink-soft); margin-bottom: 5px; margin-top: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .modal input, .modal select, .modal textarea { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--bg2); color: var(--ink); }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { outline: none; border-color: var(--brand); }
+  .modal textarea { resize: vertical; min-height: 60px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 22px; justify-content: flex-end; }
+  .modal-actions .del { margin-right: auto; color: var(--red); border-color: rgba(248,113,113,0.3); }
+  .modal-actions .del:hover { background: rgba(248,113,113,0.1); border-color: var(--red); }
+  .hidden-file { display: none; }
+  .banner { background: rgba(52,211,153,0.08); border-bottom: 1px solid rgba(52,211,153,0.2); color: #6ee7b7; font-size: 12px; padding: 10px 28px; display:flex; align-items:center; gap:8px; }
+  .banner b { color: #a7f3d0; }
+  .banner .status-dot { width:8px; height:8px; border-radius:50%; background: var(--brand); display:inline-block; box-shadow: 0 0 6px var(--brand); animation: pulse 2s infinite; }
+  .banner .status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(15,20,25,0.85); display: flex; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
+  .loading-box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 32px 40px; text-align: center; }
+  .loading-box .spinner { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">Carregando CRM...</div>
+    <div style="font-size:12px;color:var(--ink-soft)">Conectando ao banco de dados</div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">C</div>
+    <div class="txt"><h1>CRM Eventos · Core</h1><span>Confirmação de clientes para o evento</span></div>
+  </div>
+  <div class="toolbar">
+    <button onclick="addCardPrompt()">+ Cliente</button>
+    <button onclick="document.getElementById('fileIn').click()">Importar Excel</button>
+    <button class="primary" onclick="exportXlsx()">Exportar Excel (backup)</button>
+    <span id="saveStatus" style="font-size:11px;color:var(--brand);opacity:0.45;transition:opacity 0.3s;font-weight:600;white-space:nowrap;">sincronizado</span>
+    <input type="file" id="fileIn" class="hidden-file" accept=".xlsx,.xls,.csv" onchange="importXlsx(event)">
+  </div>
+</div>
+
+<div class="banner">
+  <span class="status-dot" id="connDot"></span>
+  <span id="connText">Conectado ao banco de dados — <b>tempo real ativo</b>. Alterações aparecem automaticamente para todos os usuários.</span>
+</div>
+
+<div class="stats" id="stats"></div>
+<div class="tabs" id="tabs"></div>
+<div class="board-wrap"><div class="board" id="board"></div></div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle">Editar cliente</h3>
+    <label>Nome</label><input id="mName" type="text">
+    <label>Telefone</label><input id="mPhone" type="text" placeholder="11999998888">
+    <label>Produto</label><input id="mProd" type="text">
+    <label>Lista</label><select id="mList"></select>
+    <label>Status</label><select id="mStatus"></select>
+    <label>Tentativas de contato (0 a 5)</label><input id="mTries" type="number" min="0" max="5" value="0">
+    <label>Observação</label><textarea id="mNote"></textarea>
+    <div class="modal-actions">
+      <button class="del" id="mDel" onclick="deleteCard()">Excluir</button>
+      <button onclick="closeModal()">Cancelar</button>
+      <button class="primary" onclick="saveCard()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIGURAÇÃO SUPABASE ────────────────────────────────────────────────────
+// Substitua os valores abaixo pelas credenciais do seu projeto Supabase
+const SUPABASE_URL = 'https://kwuuvtwriptrohwudegc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3dXV2dHdyaXB0cm9od3VkZWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTAwMDIsImV4cCI6MjA5NzI4NjAwMn0.7Pk4QkaIxSpBmWyrJRYQf-5ZzR-ThWJBqNrqyqXR2kI';
+// ─────────────────────────────────────────────────────────────────────────────
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUSES = [
+  { id: 'em_contato',    label: 'Em contato',      color: '#60a5fa' },
+  { id: 'nao_respondeu', label: 'Não respondeu',    color: '#fbbf24' },
+  { id: 'confirmou',     label: 'Confirmou',        color: '#34d399' },
+  { id: 'proxima',       label: 'Vai pra próxima',  color: '#fb923c' },
+  { id: 'nao_vai',       label: 'Não vai',          color: '#f87171' },
+];
+const LISTS = [
+  { id: 'upsell',  label: 'Upsell (só ingresso)' },
+  { id: 'novos',   label: 'Novos clientes' },
+  { id: 'antigos', label: 'Antigos / no-show' },
+];
+const MAX_TRIES = 5;
+
+let clients = [];
+let activeList = 'upsell';
+let editingId = null;
+let dragId = null;
+let isSyncing = false;
+
+// Mapeia linha do banco para objeto do app
+function fromDb(row) {
+  return {
+    id:     row.id,
+    name:   row.nome       || '',
+    phone:  row.telefone   || '',
+    prod:   row.produto    || '',
+    list:   row.lista      || 'antigos',
+    status: row.status     || 'em_contato',
+    tries:  row.tentativas || 0,
+    note:   row.observacao || '',
+  };
+}
+
+// Mapeia objeto do app para linha do banco
+function toDb(c) {
+  return {
+    nome:        c.name,
+    telefone:    c.phone    || '',
+    produto:     c.prod     || '',
+    lista:       c.list,
+    status:      c.status,
+    tentativas:  c.tries    || 0,
+    observacao:  c.note     || '',
+    atualizado_em: new Date().toISOString(),
+  };
+}
+
+// ─── CAMADA DE DADOS ──────────────────────────────────────────────────────────
+
+async function fetchClients() {
+  const { data, error } = await db
+    .from('clientes')
+    .select('*')
+    .order('atualizado_em', { ascending: true });
+  if (error) {
+    console.error('Erro ao carregar clientes:', error);
+    setConnStatus(false);
+    return;
+  }
+  clients = data.map(fromDb);
+  render();
+}
+
+async function insertClient(c) {
+  setSyncing(true);
+  const { error } = await db.from('clientes').insert(toDb(c));
+  setSyncing(false);
+  if (error) { alert('Erro ao salvar: ' + error.message); return false; }
+  return true;
+}
+
+async function updateClient(id, fields) {
+  setSyncing(true);
+  const dbFields = {};
+  if ('name'   in fields) dbFields.nome       = fields.name;
+  if ('phone'  in fields) dbFields.telefone   = fields.phone;
+  if ('prod'   in fields) dbFields.produto    = fields.prod;
+  if ('list'   in fields) dbFields.lista      = fields.list;
+  if ('status' in fields) dbFields.status     = fields.status;
+  if ('tries'  in fields) dbFields.tentativas = fields.tries;
+  if ('note'   in fields) dbFields.observacao = fields.note;
+  dbFields.atualizado_em = new Date().toISOString();
+  const { error } = await db.from('clientes').update(dbFields).eq('id', id);
+  setSyncing(false);
+  if (error) { alert('Erro ao atualizar: ' + error.message); return false; }
+  return true;
+}
+
+async function deleteClient(id) {
+  setSyncing(true);
+  const { error } = await db.from('clientes').delete().eq('id', id);
+  setSyncing(false);
+  if (error) { alert('Erro ao excluir: ' + error.message); return false; }
+  return true;
+}
+
+// Subscrição de tempo real
+function setupRealtime() {
+  db.channel('clientes-all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
+      fetchClients();
+    })
+    .subscribe((status) => {
+      setConnStatus(status === 'SUBSCRIBED');
+    });
+}
+
+function setConnStatus(connected) {
+  const dot  = document.getElementById('connDot');
+  const text = document.getElementById('connText');
+  if (!dot) return;
+  if (connected) {
+    dot.classList.remove('offline');
+    text.innerHTML = 'Conectado ao banco de dados — <b>tempo real ativo</b>. Alterações aparecem automaticamente para todos os usuários.';
+  } else {
+    dot.classList.add('offline');
+    text.innerHTML = '<b>Sem conexão com o banco.</b> Verifique sua internet ou as credenciais do Supabase.';
+  }
+}
+
+function setSyncing(val) {
+  isSyncing = val;
+  const el = document.getElementById('saveStatus');
+  if (!el) return;
+  el.textContent = val ? 'sincronizando...' : '✓ sincronizado';
+  el.style.opacity = val ? '1' : '0.45';
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+
+function render() {
+  renderTabs();
+  if (activeList === 'dashboard') {
+    document.getElementById('stats').style.display = 'none';
+    renderDashboard();
+  } else {
+    document.getElementById('stats').style.display = 'flex';
+    renderStats();
+    renderBoard();
+  }
+}
+
+function renderTabs() {
+  let tabs = `<div class="tab ${activeList==='dashboard'?'active':''}" onclick="setList('dashboard')">📊 Visão geral</div>`;
+  tabs += LISTS.map(l => {
+    const n = clients.filter(c => c.list === l.id).length;
+    return `<div class="tab ${l.id===activeList?'active':''}" onclick="setList('${l.id}')">${l.label}<span class="count">${n}</span></div>`;
+  }).join('');
+  document.getElementById('tabs').innerHTML = tabs;
+}
+
+function setList(id) { activeList = id; render(); }
+
+function renderStats() {
+  const inList = clients.filter(c => c.list === activeList);
+  const total  = inList.length;
+  const conf   = inList.filter(c => c.status === 'confirmou').length;
+  const nao    = inList.filter(c => c.status === 'nao_vai').length;
+  const alerts = inList.filter(c => c.tries >= MAX_TRIES && c.status !== 'confirmou' && c.status !== 'nao_vai').length;
+  const pct    = total ? Math.round((conf / total) * 100) : 0;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><span class="num">${total}</span><span class="lbl">Nesta lista</span></div>
+    <div class="stat"><span class="num">${conf}</span><span class="lbl">Confirmados</span></div>
+    <div class="stat"><span class="num">${pct}%</span><span class="lbl">Taxa confirmação</span></div>
+    <div class="stat"><span class="num">${nao}</span><span class="lbl">Não vão</span></div>
+    <div class="stat"><span class="num" style="color:${alerts?'#e24b4a':'inherit'}">${alerts}</span><span class="lbl">Esgotaram 5x</span></div>`;
+}
+
+function renderBoard() {
+  const boardEl = document.getElementById('board');
+  boardEl.style.display = 'grid';
+  destroyCharts();
+  boardEl.innerHTML = STATUSES.map(s => {
+    const cards = clients.filter(c => c.list === activeList && c.status === s.id);
+    const html  = cards.length ? cards.map(c => cardHtml(c, s.color)).join('') : '<div class="empty-hint">—</div>';
+    return `<div class="col" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${s.id}')">
+      <div class="col-head"><span class="dot" style="background:${s.color}"></span><span class="title">${s.label}</span><span class="c">${cards.length}</span></div>
+      <div class="cards">${html}</div></div>`;
+  }).join('');
+}
+
+function cardHtml(c, color) {
+  const wa       = c.phone ? `https://wa.me/${normalizePhone(c.phone)}` : null;
+  const showTries = c.status !== 'confirmou' && c.status !== 'nao_vai';
+  const isAlert  = c.tries >= MAX_TRIES && showTries;
+  let dots = '';
+  for (let i = 1; i <= MAX_TRIES; i++) {
+    dots += `<span class="tdot ${i<=c.tries?(c.tries>=MAX_TRIES?'max':'on'):''}">${i<=c.tries?i:''}</span>`;
+  }
+  const safeId = esc(c.id);
+  return `<div class="card ${isAlert?'alert':''}" style="border-left-color:${color}" draggable="true"
+       ondragstart="onDragStart(event,'${safeId}')" ondragend="onDragEnd(event)" onclick="openEdit('${safeId}')">
+    <div class="name">${esc(c.name)} ${isAlert?'<span class="alert-tag">5x sem resposta</span>':''}</div>
+    ${c.prod?`<span class="prod">${esc(c.prod)}</span>`:''}
+    <div class="phone">${esc(c.phone||'sem telefone')} ${wa?`· <a class="wa" href="${wa}" target="_blank" onclick="event.stopPropagation()">WhatsApp</a>`:''}</div>
+    ${c.note?`<div class="note">${esc(c.note)}</div>`:''}
+    ${showTries?`<div class="tries"><div class="tries-dots">${dots}</div>
+      <button class="try-btn" onclick="event.stopPropagation();bumpTry('${safeId}')">+1 tentativa</button></div>`:''}
+  </div>`;
+}
+
+// ─── AÇÕES ────────────────────────────────────────────────────────────────────
+
+async function bumpTry(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const newTries  = Math.min(MAX_TRIES, (c.tries || 0) + 1);
+  const newStatus = (c.status === 'em_contato') ? 'nao_respondeu' : c.status;
+  // atualização local imediata para responsividade
+  c.tries  = newTries;
+  c.status = newStatus;
+  render();
+  await updateClient(id, { tries: newTries, status: newStatus });
+}
+
+async function onDrop(e, status) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-target');
+  const c = clients.find(x => x.id === dragId);
+  if (!c || c.status === status) return;
+  c.status = status;
+  render();
+  await updateClient(dragId, { status });
+  dragId = null;
+}
+
+// ─── DRAG ─────────────────────────────────────────────────────────────────────
+
+function onDragStart(e, id) { dragId = id; e.target.classList.add('dragging'); }
+function onDragEnd(e)        { e.target.classList.remove('dragging'); }
+function onDragOver(e)       { e.preventDefault(); e.currentTarget.classList.add('drop-target'); }
+function onDragLeave(e)      { e.currentTarget.classList.remove('drop-target'); }
+
+// ─── MODAL ────────────────────────────────────────────────────────────────────
+
+function openEdit(id) {
+  editingId = id;
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('modalTitle').textContent = 'Editar cliente';
+  document.getElementById('mDel').style.display = 'inline-block';
+  fillModal(c);
+  showModal();
+}
+
+function addCardPrompt() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Novo cliente';
+  document.getElementById('mDel').style.display = 'none';
+  fillModal({ name:'', phone:'', prod:'', list: activeList==='dashboard'?'upsell':activeList, status:'em_contato', tries:0, note:'' });
+  showModal();
+}
+
+function fillModal(c) {
+  document.getElementById('mName').value   = c.name  || '';
+  document.getElementById('mPhone').value  = c.phone || '';
+  document.getElementById('mProd').value   = c.prod  || '';
+  document.getElementById('mList').innerHTML   = LISTS.map(l   => `<option value="${l.id}"   ${l.id===c.list?'selected':''}>${l.label}</option>`).join('');
+  document.getElementById('mStatus').innerHTML = STATUSES.map(s => `<option value="${s.id}" ${s.id===c.status?'selected':''}>${s.label}</option>`).join('');
+  document.getElementById('mTries').value  = c.tries || 0;
+  document.getElementById('mNote').value   = c.note  || '';
+}
+
+function showModal()  { document.getElementById('modalBg').classList.add('show'); }
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); editingId = null; }
+
+async function saveCard() {
+  const data = {
+    name:   document.getElementById('mName').value.trim(),
+    phone:  document.getElementById('mPhone').value.trim(),
+    prod:   document.getElementById('mProd').value.trim(),
+    list:   document.getElementById('mList').value,
+    status: document.getElementById('mStatus').value,
+    tries:  Math.max(0, Math.min(MAX_TRIES, parseInt(document.getElementById('mTries').value) || 0)),
+    note:   document.getElementById('mNote').value.trim(),
+  };
+  if (!data.name) { alert('Coloque ao menos o nome.'); return; }
+  closeModal();
+  if (editingId) {
+    await updateClient(editingId, data);
+  } else {
+    activeList = data.list;
+    await insertClient(data);
+  }
+  // O realtime vai buscar e re-renderizar automaticamente
+}
+
+async function deleteCard() {
+  if (!editingId) return;
+  if (!confirm('Excluir este cliente?')) return;
+  closeModal();
+  await deleteClient(editingId);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+
+function listStats(listId) {
+  const inList = clients.filter(c => c.list === listId);
+  const total  = inList.length;
+  const by     = {};
+  STATUSES.forEach(s => by[s.id] = inList.filter(c => c.status === s.id).length);
+  const conf   = by['confirmou'];
+  const nao    = by['nao_vai'];
+  const pct    = total ? Math.round((conf / total) * 100) : 0;
+  const noshowPct = total ? Math.round((nao / total) * 100) : 0;
+  return { total, by, conf, nao, pct, noshowPct };
+}
+
+let charts = [];
+function destroyCharts() { charts.forEach(c => { try { c.destroy(); } catch(e) {} }); charts = []; }
+
+function renderDashboard() {
+  destroyCharts();
+  const g = { total: clients.length, conf:0, nao:0, contato:0, naoresp:0, proxima:0 };
+  clients.forEach(c => {
+    if      (c.status === 'confirmou')     g.conf++;
+    else if (c.status === 'nao_vai')       g.nao++;
+    else if (c.status === 'em_contato')    g.contato++;
+    else if (c.status === 'nao_respondeu') g.naoresp++;
+    else if (c.status === 'proxima')       g.proxima++;
+  });
+  const pendentes = g.total - g.conf - g.nao - g.proxima;
+  const pctGeral  = g.total ? Math.round((g.conf / g.total) * 100) : 0;
+  const alerts    = clients.filter(c => c.tries >= MAX_TRIES && c.status !== 'confirmou' && c.status !== 'nao_vai').length;
+  const ls = {};
+  LISTS.forEach(l => ls[l.id] = listStats(l.id));
+
+  const board = document.getElementById('board');
+  board.style.display = 'block';
+  board.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px">
+      ${bigStat('Total de clientes', g.total, 'var(--ink)')}
+      ${bigStat('Confirmados', g.conf, 'var(--green)')}
+      ${bigStat('Taxa de confirmação', pctGeral+'%', 'var(--brand)')}
+      ${bigStat('Ainda pendentes', pendentes, 'var(--amber)')}
+      ${bigStat('Não vão', g.nao, 'var(--red)')}
+      ${bigStat('Esgotaram 5 contatos', alerts, alerts?'var(--red)':'var(--ink-soft)')}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px" id="chartsRow">
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--ink)">Situação geral (todos os clientes)</div>
+        <div style="position:relative;height:240px"><canvas id="pieChart"></canvas></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--ink)">Confirmados por lista</div>
+        <div style="position:relative;height:240px"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:16px;color:var(--ink)">Detalhe por lista</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+        ${LISTS.map(l => listCard(l, ls[l.id])).join('')}
+      </div>
+    </div>`;
+  drawCharts(g, ls);
+}
+
+function bigStat(label, val, color) {
+  return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:16px 18px">
+    <div style="font-size:28px;font-weight:700;letter-spacing:-0.02em;color:${color};line-height:1.1">${val}</div>
+    <div style="font-size:10.5px;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-top:5px">${label}</div>
+  </div>`;
+}
+
+function listCard(l, s) {
+  const bar = STATUSES.map(st => {
+    const w = s.total ? (s.by[st.id] / s.total * 100) : 0;
+    return w > 0 ? `<div style="width:${w}%;background:${st.color}" title="${st.label}: ${s.by[st.id]}"></div>` : '';
+  }).join('');
+  return `<div style="border:1px solid var(--line);border-radius:11px;padding:14px;background:var(--bg2)">
+    <div style="font-size:12.5px;font-weight:700;margin-bottom:4px">${l.label}</div>
+    <div style="font-size:22px;font-weight:700;color:var(--brand);letter-spacing:-0.02em">${s.pct}% <span style="font-size:11px;color:var(--ink-dim);font-weight:600">confirmados</span></div>
+    <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;margin:10px 0;background:var(--line)">${bar}</div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft)">
+      <span>${s.conf}/${s.total} confirmados</span>
+      <span style="color:var(--red)">${s.nao} não vão</span>
+    </div>
+  </div>`;
+}
+
+function drawCharts(g, ls) {
+  if (typeof Chart === 'undefined') return;
+  Chart.defaults.color = '#9aa7b5';
+  Chart.defaults.font.family = '-apple-system, sans-serif';
+  const pie = document.getElementById('pieChart');
+  if (pie) {
+    charts.push(new Chart(pie, {
+      type: 'doughnut',
+      data: {
+        labels: ['Confirmou','Em contato','Não respondeu','Vai pra próxima','Não vai'],
+        datasets: [{ data: [g.conf,g.contato,g.naoresp,g.proxima,g.nao],
+          backgroundColor: ['#34d399','#60a5fa','#fbbf24','#fb923c','#f87171'],
+          borderColor: '#1c2530', borderWidth: 2 }]
+      },
+      options: { responsive:true, maintainAspectRatio:false,
+        plugins: { legend: { position:'bottom', labels: { padding:12, font:{size:11}, usePointStyle:true } } } }
+    }));
+  }
+  const bar = document.getElementById('barChart');
+  if (bar) {
+    charts.push(new Chart(bar, {
+      type: 'bar',
+      data: {
+        labels: LISTS.map(l => l.label.split(' ')[0]),
+        datasets: [
+          { label:'Confirmados', data: LISTS.map(l => ls[l.id].conf), backgroundColor:'#34d399', borderRadius:6 },
+          { label:'Total',       data: LISTS.map(l => ls[l.id].total), backgroundColor:'#344150', borderRadius:6 }
+        ]
+      },
+      options: { responsive:true, maintainAspectRatio:false,
+        scales: { x: { grid:{display:false} }, y: { grid:{color:'#2a3744'}, beginAtZero:true } },
+        plugins: { legend: { position:'bottom', labels: { padding:12, font:{size:11}, usePointStyle:true } } } }
+    }));
+  }
+}
+
+// ─── EXCEL ────────────────────────────────────────────────────────────────────
+
+function exportXlsx() {
+  const wb = XLSX.utils.book_new();
+  LISTS.forEach(l => {
+    const rows = clients.filter(c => c.list === l.id).map(c => ({
+      NOME: c.name, TELEFONE: c.phone, PRODUTO: c.prod||'',
+      STATUS: (STATUSES.find(s => s.id === c.status)||STATUSES[0]).label,
+      TENTATIVAS: c.tries||0, OBSERVACAO: c.note||''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{NOME:'',TELEFONE:'',PRODUTO:'',STATUS:'',TENTATIVAS:'',OBSERVACAO:''}]);
+    XLSX.utils.book_append_sheet(wb, ws, l.label.slice(0, 28));
+  });
+  XLSX.writeFile(wb, `crm-eventos-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function guessStatus(val) {
+  if (!val) return null;
+  const v = String(val).toLowerCase();
+  if (v.includes('confirm')||v.includes('verde')) return 'confirmou';
+  if (v.includes('próxima')||v.includes('proxima')||v.includes('claro')) return 'proxima';
+  if ((v.includes('não vai')||v.includes('nao vai'))||(v.includes('vermelho')&&!v.includes('claro'))) return 'nao_vai';
+  if (v.includes('respond')||v.includes('amarelo')) return 'nao_respondeu';
+  if (v.includes('contato')||v.includes('azul')) return 'em_contato';
+  return null;
+}
+
+function guessListFromRow(prod, noshow) {
+  const n = String(noshow||'').toLowerCase().trim();
+  if (n && (n.includes('x')||n.includes('sim')||n.includes('noshow')||n.includes('nunca'))) return 'antigos';
+  const p = String(prod||'').toLowerCase();
+  if (p.includes('experience')||p.includes('boost')||p.includes('audience')||p.includes('scale')) return 'novos';
+  if (!p) return 'antigos';
+  return 'novos';
+}
+
+async function importXlsx(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const wb       = XLSX.read(e.target.result, { type:'array' });
+      const imported = [];
+      wb.SheetNames.forEach(sheetName => {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval:'' });
+        rows.forEach(r => {
+          const keys = Object.keys(r);
+          const get  = (names) => { for (const k of keys) { const kl = k.toLowerCase().trim(); if (names.some(n => kl.includes(n))) return r[k]; } return ''; };
+          const name = get(['nome','name','cliente']);
+          if (!name || !String(name).trim()) return;
+          const prod    = get(['produto','product']);
+          const noshow  = get(['noshow','nunca','foi']);
+          const sheetGuess = sheetName.toLowerCase();
+          let list;
+          if (sheetGuess.includes('upsell')||sheetGuess.includes('ingresso')) list = 'upsell';
+          else if (sheetGuess.includes('novo')) list = 'novos';
+          else if (sheetGuess.includes('antig')||sheetGuess.includes('show')) list = 'antigos';
+          else list = guessListFromRow(prod, noshow);
+          imported.push({
+            name:   String(name).trim(),
+            phone:  String(get(['telefone','phone','tel','whats','celular','fone'])||'').trim(),
+            prod:   String(prod||'').trim(),
+            list,
+            status: guessStatus(get(['status','situa','cor'])) || 'em_contato',
+            tries:  parseInt(get(['tentativ']))||0,
+            note:   String(get(['obs','nota','coment'])||'').trim(),
+          });
+        });
+      });
+      if (!imported.length) { alert('Não encontrei clientes. A planilha precisa ter uma coluna "NOME".'); ev.target.value=''; return; }
+      if (!confirm(`Importar ${imported.length} clientes?\n\nISTO VAI APAGAR todos os clientes atuais do banco e inserir os da planilha.\n\nContinuar?`)) { ev.target.value=''; return; }
+
+      setSyncing(true);
+      // Apaga tudo e insere os novos
+      const { error: delErr } = await db.from('clientes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (delErr) { alert('Erro ao limpar banco: ' + delErr.message); setSyncing(false); ev.target.value=''; return; }
+
+      const rows = imported.map(c => toDb(c));
+      const { error: insErr } = await db.from('clientes').insert(rows);
+      setSyncing(false);
+      ev.target.value = '';
+      if (insErr) { alert('Erro ao importar: ' + insErr.message); return; }
+
+      const counts = {};
+      imported.forEach(c => counts[c.list] = (counts[c.list]||0)+1);
+      activeList = counts['upsell'] ? 'upsell' : (Object.keys(counts).sort((a,b) => counts[b]-counts[a])[0]||'upsell');
+      alert(`Importados ${imported.length} clientes.\nUpsell: ${counts.upsell||0} · Novos: ${counts.novos||0} · Antigos: ${counts.antigos||0}\n\nConfira a separação das listas e ajuste manualmente os que precisar.`);
+      // O realtime buscará automaticamente
+    } catch(err) {
+      alert('Erro ao ler o arquivo: ' + err.message);
+      ev.target.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function normalizePhone(p) {
+  let d = String(p).replace(/\D/g,'');
+  if (!d.startsWith('55') && d.length <= 11) d = '55' + d;
+  return d;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+async function init() {
+  await fetchClients();
+  setupRealtime();
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+init();
+</script>
+</body>
+</html>
