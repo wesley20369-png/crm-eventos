@@ -39,7 +39,8 @@
   .tab .count { background: rgba(255,255,255,0.08); border-radius: 20px; padding: 2px 9px; font-size: 11px; margin-left: 8px; font-weight: 700; }
   .tab.active .count { background: var(--brand); color: #06281f; }
   .board-wrap { padding: 22px 28px 48px; background: var(--bg); min-height: 60vh; }
-  .board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  @media (max-width: 1300px) { .board { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 1100px) { .board { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 600px) { .board { grid-template-columns: 1fr; } }
   .col { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-height: 220px; display: flex; flex-direction: column; }
@@ -160,6 +161,7 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const STATUSES = [
+  { id: 'em_aberto',     label: 'Em aberto',        color: '#94a3b8' },
   { id: 'em_contato',    label: 'Em contato',      color: '#60a5fa' },
   { id: 'nao_respondeu', label: 'Não respondeu',    color: '#fbbf24' },
   { id: 'confirmou',     label: 'Confirmou',        color: '#34d399' },
@@ -409,7 +411,7 @@ function addCardPrompt() {
   editingId = null;
   document.getElementById('modalTitle').textContent = 'Novo cliente';
   document.getElementById('mDel').style.display = 'none';
-  fillModal({ name:'', phone:'', prod:'', list: activeList==='dashboard'?'upsell':activeList, status:'em_contato', tries:0, note:'' });
+  fillModal({ name:'', phone:'', prod:'', list: activeList==='dashboard'?'upsell':activeList, status:'em_aberto', tries:0, note:'' });
   showModal();
 }
 
@@ -548,12 +550,13 @@ function drawCharts(g, ls) {
   Chart.defaults.font.family = '-apple-system, sans-serif';
   const pie = document.getElementById('pieChart');
   if (pie) {
+    const pieCounts = STATUSES.map(s => clients.filter(c => c.status === s.id).length);
     charts.push(new Chart(pie, {
       type: 'doughnut',
       data: {
-        labels: ['Confirmou','Em contato','Não respondeu','Vai pra próxima','Não vai'],
-        datasets: [{ data: [g.conf,g.contato,g.naoresp,g.proxima,g.nao],
-          backgroundColor: ['#34d399','#60a5fa','#fbbf24','#fb923c','#f87171'],
+        labels: STATUSES.map(s => s.label),
+        datasets: [{ data: pieCounts,
+          backgroundColor: STATUSES.map(s => s.color),
           borderColor: '#1c2530', borderWidth: 2 }]
       },
       options: { responsive:true, maintainAspectRatio:false,
