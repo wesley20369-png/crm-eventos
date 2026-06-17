@@ -342,7 +342,7 @@ function renderBoard() {
 }
 
 function cardHtml(c, color) {
-  const wa       = c.phone ? `https://wa.me/${normalizePhone(c.phone)}` : null;
+  const wa       = c.phone ? `whatsapp://send?phone=${normalizePhone(c.phone)}` : null;
   const showTries = c.status !== 'confirmou' && c.status !== 'nao_vai';
   const isAlert  = c.tries >= MAX_TRIES && showTries;
   let dots = '';
@@ -354,7 +354,7 @@ function cardHtml(c, color) {
        ondragstart="onDragStart(event,'${safeId}')" ondragend="onDragEnd(event)" onclick="openEdit('${safeId}')">
     <div class="name">${esc(c.name)} ${isAlert?'<span class="alert-tag">5x sem resposta</span>':''}</div>
     ${c.prod?`<span class="prod">${esc(c.prod)}</span>`:''}
-    <div class="phone">${esc(c.phone||'sem telefone')} ${wa?`· <a class="wa" href="${wa}" target="_blank" onclick="event.stopPropagation()">WhatsApp</a>`:''}</div>
+    <div class="phone">${esc(c.phone||'sem telefone')} ${wa?`· <a class="wa" href="${wa}" onclick="event.stopPropagation()">WhatsApp</a>`:''}</div>
     ${c.note?`<div class="note">${esc(c.note)}</div>`:''}
     ${showTries?`<div class="tries"><div class="tries-dots">${dots}</div>
       <button class="try-btn" onclick="event.stopPropagation();bumpTry('${safeId}')">+1 tentativa</button></div>`:''}
