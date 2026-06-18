@@ -119,6 +119,58 @@
   .ci-btn:hover { background: var(--brand-dark); }
   .ci-btn.undo { background: transparent; color: var(--ink-soft); border: 1px solid var(--line-soft); font-size: 12px; font-weight: 600; padding: 8px 14px; letter-spacing: 0; }
   .ci-btn.undo:hover { color: var(--red); border-color: var(--red); }
+  .ci-btn.alt { background: var(--surface2); color: var(--ink); border: 1px solid var(--line-soft); font-size: 12px; font-weight: 600; padding: 9px 16px; letter-spacing: 0; }
+  .ci-btn.alt:hover { border-color: var(--brand); color: var(--brand); }
+  /* Credenciamento — toolbar e segmentos */
+  .cred-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+  .seg-group { display: flex; gap: 6px; background: var(--bg2); padding: 5px; border-radius: 11px; border: 1px solid var(--line); }
+  /* Fichas (cards) */
+  .fc-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+  .fc-big { font-size: 28px; font-weight: 800; color: var(--brand); letter-spacing: -0.02em; }
+  .fc-sub { font-size: 13px; color: var(--ink-soft); }
+  .fc-progress { flex: 1; min-width: 160px; height: 8px; background: var(--line); border-radius: 5px; overflow: hidden; }
+  .fc-progress > div { height: 100%; background: var(--brand); border-radius: 5px; transition: width 0.4s; }
+  .fc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .fc-card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 14px; padding: 15px; cursor: pointer; transition: all 0.15s; }
+  .fc-card:hover { border-color: var(--brand); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+  .fc-card.done { border-left: 3px solid var(--brand); }
+  .fc-top { display: flex; align-items: center; gap: 11px; }
+  .fc-avatar { width: 40px; height: 40px; border-radius: 11px; background: var(--surface2); color: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+  .fc-id { flex: 1; min-width: 0; }
+  .fc-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fc-plano { font-size: 11px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fc-badge { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+  .fc-badge.ok { background: rgba(52,211,153,0.15); color: var(--brand); }
+  .fc-badge.pend { background: rgba(251,191,36,0.18); color: var(--amber); }
+  .fc-chips { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+  .chip { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--bg2); color: var(--ink-dim); border: 1px solid var(--line); }
+  .chip.on { background: rgba(52,211,153,0.12); color: var(--brand); border-color: rgba(52,211,153,0.3); }
+  /* Stats (evento/vendas) */
+  .ev-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .ev-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 16px 18px; }
+  .ev-num { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  .ev-lbl { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-top: 5px; }
+  .ev-sec-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .ev-cnt { background: var(--surface2); color: var(--ink); border-radius: 20px; padding: 1px 9px; font-size: 12px; }
+  .ev-col { display: flex; flex-direction: column; gap: 8px; }
+  /* Vendas — formas de pagamento */
+  .vd-formas-box { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 14px 18px; margin-bottom: 18px; }
+  .vd-formas-title { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 10px; }
+  .vd-formas { display: flex; flex-wrap: wrap; gap: 10px; }
+  .vd-forma { background: var(--bg2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px; font-size: 13px; }
+  .vd-forma span { color: var(--ink-soft); margin-right: 8px; }
+  .vd-forma b { color: var(--brand); }
+  .vd-tag { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: rgba(52,211,153,0.15); color: var(--brand); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  /* Formulário compacto da ficha */
+  .cred-modal { max-width: 600px; }
+  .cf-group-title { font-size: 11px; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: 0.05em; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+  .cf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .cf-field { display: flex; flex-direction: column; }
+  .cf-field.cf-wide { grid-column: 1 / -1; }
+  .cf-field label { font-size: 10.5px; color: var(--ink-soft); margin: 0 0 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .cf-field input, .cf-field select { width: 100%; font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--bg2); color: var(--ink); }
+  .cf-field input:focus, .cf-field select:focus { outline: none; border-color: var(--brand); }
+  @media (max-width: 520px) { .cf-grid { grid-template-columns: 1fr; } }
   /* Login */
   .auth-box { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; padding: 30px 32px; width: 100%; max-width: 360px; }
   .auth-box .auth-logo { width: 52px; height: 52px; border-radius: 13px; background: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #06281f; margin: 0 auto 12px; box-shadow: 0 2px 12px rgba(52,211,153,0.35); }
@@ -198,12 +250,37 @@
 </div>
 
 <div class="modal-bg" id="credModalBg">
-  <div class="modal">
-    <h3>Ficha de credenciamento</h3>
+  <div class="modal cred-modal">
+    <h3 id="credModalTitle">Ficha de credenciamento</h3>
     <div id="credForm"></div>
     <div class="modal-actions">
       <button onclick="closeCred()">Cancelar</button>
-      <button class="primary" onclick="saveCred()">Salvar ficha</button>
+      <button class="primary" onclick="saveCred(false)">Salvar</button>
+      <button class="primary" onclick="saveCred(true)">Salvar e próximo →</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="vendaModalBg">
+  <div class="modal" style="max-width:360px">
+    <h3 id="vendaTitle">Registrar venda</h3>
+    <label>Valor pago (R$)</label>
+    <input id="vd_valor" type="number" min="0" step="0.01" placeholder="0,00">
+    <label>Forma de pagamento</label>
+    <select id="vd_forma">
+      <option value="">—</option>
+      <option>Pix</option>
+      <option>Cartão de crédito</option>
+      <option>Cartão de débito</option>
+      <option>Boleto</option>
+      <option>Dinheiro</option>
+      <option>Transferência</option>
+      <option>Outro</option>
+    </select>
+    <div class="modal-actions">
+      <button class="del" id="vd_del" onclick="removeVenda()">Remover</button>
+      <button onclick="closeVenda()">Cancelar</button>
+      <button class="primary" onclick="saveVenda()">Salvar venda</button>
     </div>
   </div>
 </div>
@@ -241,6 +318,7 @@ let isSyncing = false;
 let credMode = 'fichas';      // 'fichas' ou 'evento'
 let credSearch = '';          // texto de busca no modo evento
 let credEditingId = null;     // ficha aberta no formulário de credenciamento
+let vendaEditingId = null;    // venda aberta no modal de vendas
 
 // Mapeia linha do banco para objeto do app
 function fromDb(row) {
@@ -269,6 +347,8 @@ function fromDb(row) {
     confirmacao:    !!row.confirmacao,
     presente:       !!row.presente,
     horarioChegada: row.horario_chegada         || null,
+    valorVenda:     Number(row.valor_venda)     || 0,
+    fechouEvento:   !!row.fechou_evento,
   };
 }
 
@@ -282,6 +362,7 @@ const FIELD_MAP = {
   instagram: 'instagram', cpf: 'cpf', email: 'email',
   grupoOficial: 'grupo_oficial', confirmacao: 'confirmacao',
   presente: 'presente', horarioChegada: 'horario_chegada',
+  valorVenda: 'valor_venda', fechouEvento: 'fechou_evento',
 };
 
 // Mapeia objeto do app para linha do banco
@@ -673,108 +754,196 @@ function drawCharts(g, ls) {
 
 // ─── CREDENCIAMENTO ───────────────────────────────────────────────────────────
 
-const CRED_FIELDS = [
-  { key:'name',           label:'Nome',                    type:'text' },
-  { key:'potencial',      label:'Potencial de compra',     type:'text' },
-  { key:'satisfacao',     label:'Satisfação no Ecossistema', type:'text' },
-  { key:'plano',          label:'Plano',                   type:'text' },
-  { key:'origem',         label:'Origem',                  type:'text' },
-  { key:'mentor',         label:'Mentor',                  type:'text' },
-  { key:'vendedor',       label:'Vendedor',                type:'text' },
-  { key:'faturamento',    label:'Faturamento',             type:'text' },
-  { key:'formaPagamento', label:'Forma de Pagamento',      type:'text' },
-  { key:'instagram',      label:'Instagram (@)',           type:'text' },
-  { key:'cpf',            label:'CPF',                     type:'text' },
-  { key:'email',          label:'E-mail',                  type:'text' },
-  { key:'phone',          label:'Telefone',                type:'text' },
-  { key:'grupoOficial',   label:'Grupo Oficial',           type:'bool' },
-  { key:'confirmacao',    label:'Confirmação',             type:'bool' },
-  { key:'presente',       label:'Presença (chegou ao evento)', type:'bool' },
+const CRED_GROUPS = [
+  { title: 'Dados pessoais', fields: [
+    { key:'name',      label:'Nome',          type:'text', wide:true },
+    { key:'cpf',       label:'CPF',           type:'text' },
+    { key:'phone',     label:'Telefone',      type:'text' },
+    { key:'email',     label:'E-mail',        type:'text', wide:true },
+    { key:'instagram', label:'Instagram (@)', type:'text' },
+  ]},
+  { title: 'Comercial', fields: [
+    { key:'potencial',      label:'Potencial de compra',       type:'text' },
+    { key:'satisfacao',     label:'Satisfação no Ecossistema', type:'text' },
+    { key:'plano',          label:'Plano',                     type:'text' },
+    { key:'origem',         label:'Origem',                    type:'text' },
+    { key:'mentor',         label:'Mentor',                    type:'text' },
+    { key:'vendedor',       label:'Vendedor',                  type:'text' },
+    { key:'faturamento',    label:'Faturamento',               type:'text' },
+    { key:'formaPagamento', label:'Forma de Pagamento',        type:'text' },
+  ]},
+  { title: 'Status', fields: [
+    { key:'grupoOficial', label:'Grupo Oficial', type:'bool' },
+    { key:'confirmacao',  label:'Confirmação',   type:'bool' },
+  ]},
 ];
+const CRED_FIELDS = CRED_GROUPS.reduce((a, g) => a.concat(g.fields), []);
 
 function credConfirmed() { return clients.filter(c => c.status === 'confirmou'); }
 
 function isCredComplete(c) {
   return !!(c.cpf && c.cpf.trim() && c.email && c.email.trim() && c.instagram && c.instagram.trim());
 }
+function isBuyer(c) { return !!c.fechouEvento || (Number(c.valorVenda) || 0) > 0; }
+function brl(v) { return (Number(v) || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
 
 // Normaliza texto p/ busca: sem acento, minúsculo
 function norm(s) {
   return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 }
 
-function setCredMode(m) { credMode = m; render(); }
+function setCredMode(m) { credMode = m; credSearch = ''; render(); }
 
 function renderCredenciamento() {
   destroyCharts();
   const board = document.getElementById('board');
   board.style.display = 'block';
   const confirmed = credConfirmed();
+  let content;
+  if (credMode === 'vendas')      content = credVendasHtml(confirmed);
+  else if (credMode === 'evento') content = credEventoHtml(confirmed);
+  else                            content = credFichasHtml(confirmed);
   board.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px">
-      <div style="display:flex;gap:6px;background:var(--bg2);padding:5px;border-radius:11px;border:1px solid var(--line)">
-        <button class="seg ${credMode==='fichas'?'on':''}" onclick="setCredMode('fichas')">📋 Fichas de dados</button>
+    <div class="cred-toolbar">
+      <div class="seg-group">
+        <button class="seg ${credMode==='fichas'?'on':''}" onclick="setCredMode('fichas')">📋 Fichas</button>
         <button class="seg ${credMode==='evento'?'on':''}" onclick="setCredMode('evento')">✅ Dia do evento</button>
+        <button class="seg ${credMode==='vendas'?'on':''}" onclick="setCredMode('vendas')">💰 Vendas</button>
       </div>
-      <button class="primary" style="margin-left:auto" onclick="exportCredenciamento()">Exportar credenciamento (Excel)</button>
+      <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+        <button onclick="gerarRelatorio()">📄 Gerar relatório</button>
+        <button class="primary" onclick="exportCredenciamento()">Exportar Excel</button>
+      </div>
     </div>
-    ${credMode === 'fichas' ? credFichasHtml(confirmed) : credEventoHtml(confirmed)}`;
+    ${content}`;
 }
 
+// ── FICHAS (cards bonitos) ──
 function credFichasHtml(confirmed) {
   if (!confirmed.length) return '<div class="empty-hint">Nenhum cliente confirmado ainda. Confirme clientes no kanban para credenciá-los aqui.</div>';
   const completos = confirmed.filter(isCredComplete).length;
-  const rows = confirmed.map(c => {
+  const pct = confirmed.length ? Math.round(completos / confirmed.length * 100) : 0;
+  const cards = confirmed.map(c => {
     const ok = isCredComplete(c);
     const safeId = esc(c.id);
-    return `<div class="cred-row" onclick="openCred('${safeId}')">
-      <div class="cred-row-main">
-        <span class="cred-status ${ok?'ok':'pend'}">${ok?'✓ completo':'faltam dados'}</span>
-        <span class="cred-name">${esc(c.name)}</span>
+    const ini = (c.name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0] || '').join('').toUpperCase();
+    return `<div class="fc-card ${ok?'done':''}" onclick="openCred('${safeId}')">
+      <div class="fc-top">
+        <div class="fc-avatar">${esc(ini)}</div>
+        <div class="fc-id">
+          <div class="fc-name">${esc(c.name)}</div>
+          <div class="fc-plano">${c.plano?esc(c.plano):'sem plano definido'}</div>
+        </div>
+        <span class="fc-badge ${ok?'ok':'pend'}" title="${ok?'dados completos':'faltam dados'}">${ok?'✓':'!'}</span>
       </div>
-      <div class="cred-row-info">${c.plano?esc(c.plano)+' · ':''}${c.cpf?'CPF ✓':'sem CPF'} · ${c.email?'e-mail ✓':'sem e-mail'} · ${c.instagram?'@ ✓':'sem @'}</div>
+      <div class="fc-chips">
+        <span class="chip ${c.cpf?'on':''}">CPF</span>
+        <span class="chip ${c.email?'on':''}">E-mail</span>
+        <span class="chip ${c.instagram?'on':''}">@</span>
+        <span class="chip ${c.phone?'on':''}">Tel</span>
+      </div>
     </div>`;
   }).join('');
-  return `<div style="margin-bottom:14px;font-size:13px;color:var(--ink-soft)"><b style="color:var(--brand)">${completos}</b> de <b>${confirmed.length}</b> com dados completos (CPF, e-mail e Instagram)</div>
-    <div class="cred-list">${rows}</div>`;
+  return `
+    <div class="fc-head">
+      <div><span class="fc-big">${completos}</span> <span class="fc-sub">de ${confirmed.length} fichas completas</span></div>
+      <div class="fc-progress"><div style="width:${pct}%"></div></div>
+    </div>
+    <div class="fc-grid">${cards}</div>`;
+}
+
+// ── DIA DO EVENTO ──
+function evStat(label, val, color) {
+  return `<div class="ev-stat"><div class="ev-num" style="color:${color}">${val}</div><div class="ev-lbl">${label}</div></div>`;
 }
 
 function credEventoHtml(confirmed) {
+  const total = confirmed.length;
   const presentes = confirmed.filter(c => c.presente).length;
+  const faltam = total - presentes;
+  const pctPres = total ? Math.round(presentes / total * 100) : 0;
+  const pctNo   = total ? Math.round(faltam / total * 100) : 0;
   return `
-    <div class="cred-counter"><span class="big"><b>${presentes}</b> de <b>${confirmed.length}</b></span> presentes</div>
+    <div class="ev-stats">
+      ${evStat('Já chegaram', presentes, 'var(--brand)')}
+      ${evStat('Faltam chegar', faltam, 'var(--amber)')}
+      ${evStat('Taxa de presença', pctPres+'%', 'var(--blue)')}
+      ${evStat('No-show', pctNo+'%', faltam?'var(--red)':'var(--ink-soft)')}
+    </div>
     <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
     <div id="credEventoList">${credEventoListHtml(confirmed)}</div>`;
 }
 
 function credEventoListHtml(confirmed) {
   const q = norm(credSearch);
-  let list = confirmed.filter(c => !q || norm(c.name).includes(q));
-  list.sort((a, b) => {
-    if (!!a.presente !== !!b.presente) return a.presente ? 1 : -1; // não-presentes primeiro
+  const match = c => !q || norm(c.name).includes(q);
+  const aguardando = confirmed.filter(c => !c.presente && match(c)).sort((a,b) => norm(a.name).localeCompare(norm(b.name)));
+  const chegaram   = confirmed.filter(c => c.presente && match(c)).sort((a,b) => new Date(b.horarioChegada||0) - new Date(a.horarioChegada||0));
+  const awHtml = aguardando.length ? aguardando.map(c => {
+    const safeId = esc(c.id);
+    return `<div class="cred-checkin"><span class="ci-name">${esc(c.name)}</span><button class="ci-btn" onclick="doCheckin('${safeId}')">CHEGOU</button></div>`;
+  }).join('') : '<div class="empty-hint">Todos os buscados já chegaram 🎉</div>';
+  const chHtml = chegaram.length ? chegaram.map(c => {
+    const safeId = esc(c.id);
+    const hora = c.horarioChegada ? new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="cred-checkin done"><div><span class="ci-name">${esc(c.name)}</span><span class="ci-time">✓ ${hora}</span></div><button class="ci-btn undo" onclick="undoCheckin('${safeId}')">desfazer</button></div>`;
+  }).join('') : '<div class="empty-hint">Ninguém chegou ainda.</div>';
+  return `
+    <div class="ev-sec-title">⏳ Aguardando <span class="ev-cnt">${aguardando.length}</span></div>
+    <div class="ev-col">${awHtml}</div>
+    <div class="ev-sec-title" style="margin-top:22px">✅ Já chegaram <span class="ev-cnt">${chegaram.length}</span></div>
+    <div class="ev-col">${chHtml}</div>`;
+}
+
+// ── VENDAS ──
+function credVendasHtml(confirmed) {
+  const compradores = confirmed.filter(isBuyer);
+  const nComp = compradores.length;
+  const totalFat = compradores.reduce((s,c) => s + (Number(c.valorVenda)||0), 0);
+  const ticket = nComp ? totalFat / nComp : 0;
+  const presentes = confirmed.filter(c => c.presente).length;
+  const conv = presentes ? Math.round(nComp / presentes * 100) : 0;
+  const formas = {};
+  compradores.forEach(c => { const f = (c.formaPagamento||'').trim() || 'Não informado'; formas[f] = (formas[f]||0) + (Number(c.valorVenda)||0); });
+  const formasHtml = Object.keys(formas).length
+    ? Object.keys(formas).map(f => `<div class="vd-forma"><span>${esc(f)}</span><b>${brl(formas[f])}</b></div>`).join('')
+    : '<div class="empty-hint" style="padding:8px">Nenhuma venda registrada ainda.</div>';
+  return `
+    <div class="ev-stats">
+      ${evStat('Compraram', nComp, 'var(--brand)')}
+      ${evStat('Faturamento', brl(totalFat), 'var(--green)')}
+      ${evStat('Ticket médio', brl(ticket), 'var(--blue)')}
+      ${evStat('Conversão dos presentes', conv+'%', 'var(--amber)')}
+    </div>
+    <div class="vd-formas-box"><div class="vd-formas-title">Por forma de pagamento</div><div class="vd-formas">${formasHtml}</div></div>
+    <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
+    <div id="credEventoList">${credVendasRowsHtml(confirmed)}</div>`;
+}
+
+function credVendasRowsHtml(confirmed) {
+  const q = norm(credSearch);
+  const list = confirmed.filter(c => !q || norm(c.name).includes(q)).sort((a,b) => {
+    if (isBuyer(a) !== isBuyer(b)) return isBuyer(a) ? -1 : 1;
     return norm(a.name).localeCompare(norm(b.name));
   });
   if (!list.length) return '<div class="empty-hint">Ninguém encontrado.</div>';
   return list.map(c => {
     const safeId = esc(c.id);
-    const hora = c.horarioChegada ? new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-    if (c.presente) {
-      return `<div class="cred-checkin done">
-        <div><span class="ci-name">${esc(c.name)}</span><span class="ci-time">✓ chegou ${hora}</span></div>
-        <button class="ci-btn undo" onclick="undoCheckin('${safeId}')">desfazer</button>
-      </div>`;
+    if (isBuyer(c)) {
+      return `<div class="cred-checkin done" onclick="openVenda('${safeId}')" style="cursor:pointer">
+        <div><span class="ci-name">${esc(c.name)}</span><span class="ci-time">${brl(c.valorVenda)} · ${esc(c.formaPagamento||'forma não informada')}</span></div>
+        <span class="vd-tag">✓ comprou</span></div>`;
     }
-    return `<div class="cred-checkin">
-      <span class="ci-name">${esc(c.name)}</span>
-      <button class="ci-btn" onclick="doCheckin('${safeId}')">CHEGOU</button>
-    </div>`;
+    return `<div class="cred-checkin"><span class="ci-name">${esc(c.name)}</span><button class="ci-btn alt" onclick="openVenda('${safeId}')">registrar venda</button></div>`;
   }).join('');
 }
 
+// Busca: re-renderiza só a lista interna (preserva o foco do campo)
 function onCredSearch(val) {
   credSearch = val;
   const el = document.getElementById('credEventoList');
-  if (el) el.innerHTML = credEventoListHtml(credConfirmed());
+  if (!el) return;
+  el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
 async function doCheckin(id) {
@@ -799,37 +968,139 @@ function openCred(id) {
   credEditingId = id;
   const c = clients.find(x => x.id === id);
   if (!c) return;
+  document.getElementById('credModalTitle').textContent = 'Ficha — ' + (c.name || '');
   const form = document.getElementById('credForm');
-  form.innerHTML = CRED_FIELDS.map(f => {
-    if (f.type === 'bool') {
-      return `<label>${f.label}</label>
-        <select id="cf_${f.key}">
-          <option value="nao" ${!c[f.key]?'selected':''}>Não</option>
-          <option value="sim" ${c[f.key]?'selected':''}>Sim</option>
-        </select>`;
-    }
-    return `<label>${f.label}</label><input id="cf_${f.key}" type="text" value="${esc(c[f.key]||'')}">`;
-  }).join('');
+  form.innerHTML = CRED_GROUPS.map(g => `
+    <div class="cf-group-title">${g.title}</div>
+    <div class="cf-grid">${g.fields.map(f => credFieldHtml(f, c)).join('')}</div>`).join('');
   document.getElementById('credModalBg').classList.add('show');
+  setTimeout(() => { const el = document.getElementById('cf_cpf'); if (el) el.focus(); }, 80);
+}
+
+function credFieldHtml(f, c) {
+  const cls = 'cf-field' + (f.wide ? ' cf-wide' : '');
+  if (f.type === 'bool') {
+    return `<div class="${cls}"><label>${f.label}</label>
+      <select id="cf_${f.key}">
+        <option value="nao" ${!c[f.key]?'selected':''}>Não</option>
+        <option value="sim" ${c[f.key]?'selected':''}>Sim</option>
+      </select></div>`;
+  }
+  return `<div class="${cls}"><label>${f.label}</label><input id="cf_${f.key}" type="text" value="${esc(c[f.key]||'')}"></div>`;
 }
 
 function closeCred() { document.getElementById('credModalBg').classList.remove('show'); credEditingId = null; }
 
-async function saveCred() {
+async function saveCred(goNext) {
   if (!credEditingId) return;
-  const c = clients.find(x => x.id === credEditingId) || {};
   const fields = {};
   CRED_FIELDS.forEach(f => {
     const el = document.getElementById('cf_' + f.key);
     if (!el) return;
     fields[f.key] = (f.type === 'bool') ? (el.value === 'sim') : el.value.trim();
   });
-  // mantém coerência do horário de chegada com o campo presença
-  if (fields.presente && !c.horarioChegada) fields.horarioChegada = new Date().toISOString();
-  if (!fields.presente) fields.horarioChegada = null;
   const id = credEditingId;
-  closeCred();
   await updateClient(id, fields);
+  if (goNext) {
+    const confirmed = credConfirmed();
+    const idx = confirmed.findIndex(x => x.id === id);
+    if (idx !== -1 && confirmed.length > 1) {
+      const next = confirmed[(idx + 1) % confirmed.length];
+      if (next && next.id !== id) { openCred(next.id); return; }
+    }
+  }
+  closeCred();
+}
+
+// ── Venda ──
+function openVenda(id) {
+  vendaEditingId = id;
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('vendaTitle').textContent = 'Venda — ' + (c.name || '');
+  document.getElementById('vd_valor').value = c.valorVenda || '';
+  document.getElementById('vd_forma').value = c.formaPagamento || '';
+  document.getElementById('vd_del').style.display = isBuyer(c) ? 'inline-block' : 'none';
+  document.getElementById('vendaModalBg').classList.add('show');
+  setTimeout(() => { const el = document.getElementById('vd_valor'); if (el) el.focus(); }, 80);
+}
+function closeVenda() { document.getElementById('vendaModalBg').classList.remove('show'); vendaEditingId = null; }
+async function saveVenda() {
+  if (!vendaEditingId) return;
+  const valor = parseFloat(document.getElementById('vd_valor').value) || 0;
+  const forma = document.getElementById('vd_forma').value;
+  const id = vendaEditingId;
+  closeVenda();
+  await updateClient(id, { valorVenda: valor, formaPagamento: forma, fechouEvento: true });
+}
+async function removeVenda() {
+  if (!vendaEditingId) return;
+  if (!confirm('Remover o registro de venda desta pessoa?')) return;
+  const id = vendaEditingId;
+  closeVenda();
+  await updateClient(id, { valorVenda: 0, fechouEvento: false });
+}
+
+// ── Relatório (imprimível / PDF) ──
+function gerarRelatorio() {
+  const confirmed = credConfirmed();
+  const total = confirmed.length;
+  const presentes = confirmed.filter(c => c.presente).length;
+  const faltam = total - presentes;
+  const pctPres = total ? Math.round(presentes / total * 100) : 0;
+  const pctNo   = total ? Math.round(faltam / total * 100) : 0;
+  const compradores = confirmed.filter(isBuyer);
+  const fat = compradores.reduce((s,c) => s + (Number(c.valorVenda)||0), 0);
+  const ticket = compradores.length ? fat / compradores.length : 0;
+  const conv = presentes ? Math.round(compradores.length / presentes * 100) : 0;
+  const agora = new Date().toLocaleString('pt-BR');
+
+  const stat = (l, v) => `<div class="r-stat"><div class="r-num">${v}</div><div class="r-lbl">${l}</div></div>`;
+  const presLista = confirmed.filter(c => c.presente)
+    .sort((a,b) => new Date(a.horarioChegada||0) - new Date(b.horarioChegada||0))
+    .map((c,i) => `<tr><td>${i+1}</td><td>${esc(c.name)}</td><td>${c.horarioChegada?new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):''}</td></tr>`).join('');
+  const vendasLista = compradores
+    .sort((a,b) => (Number(b.valorVenda)||0) - (Number(a.valorVenda)||0))
+    .map((c,i) => `<tr><td>${i+1}</td><td>${esc(c.name)}</td><td>${brl(c.valorVenda)}</td><td>${esc(c.formaPagamento||'—')}</td></tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório do evento</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+      body{padding:32px;color:#1a2230;background:#fff}
+      h1{font-size:22px;margin-bottom:2px} .sub{color:#667;font-size:13px;margin-bottom:22px}
+      h2{font-size:15px;margin:26px 0 12px;color:#065f46;border-bottom:2px solid #34d399;padding-bottom:5px}
+      .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+      .r-stat{border:1px solid #e2e8f0;border-radius:10px;padding:14px}
+      .r-num{font-size:24px;font-weight:800;color:#065f46} .r-lbl{font-size:11px;color:#667;text-transform:uppercase;letter-spacing:.04em;margin-top:4px}
+      table{width:100%;border-collapse:collapse;margin-top:6px;font-size:13px}
+      th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #eef2f6}
+      th{background:#f1f5f9;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#475569}
+      .logo{display:inline-block;width:30px;height:30px;border-radius:8px;background:#34d399;color:#06281f;font-weight:800;text-align:center;line-height:30px;margin-right:8px;vertical-align:middle}
+      @media print{body{padding:0}}
+    </style></head><body>
+    <div><span class="logo">CX</span><span style="font-size:13px;color:#667;vertical-align:middle">Eventos · CX</span></div>
+    <h1 style="margin-top:10px">Relatório do evento</h1>
+    <div class="sub">Gerado em ${agora}</div>
+    <h2>Presença</h2>
+    <div class="grid">
+      ${stat('Confirmados', total)} ${stat('Presentes', presentes)} ${stat('Faltaram', faltam)} ${stat('Taxa presença', pctPres+'%')}
+    </div>
+    <div class="grid" style="margin-top:12px">${stat('No-show', pctNo+'%')}</div>
+    <h2>Vendas no evento</h2>
+    <div class="grid">
+      ${stat('Compraram', compradores.length)} ${stat('Faturamento', brl(fat))} ${stat('Ticket médio', brl(ticket))} ${stat('Conversão', conv+'%')}
+    </div>
+    <h2>Lista de presentes (${presentes})</h2>
+    <table><thead><tr><th>#</th><th>Nome</th><th>Chegada</th></tr></thead><tbody>${presLista||'<tr><td colspan="3">Ninguém marcado como presente.</td></tr>'}</tbody></table>
+    <h2>Vendas (${compradores.length})</h2>
+    <table><thead><tr><th>#</th><th>Nome</th><th>Valor</th><th>Pagamento</th></tr></thead><tbody>${vendasLista||'<tr><td colspan="4">Nenhuma venda registrada.</td></tr>'}</tbody></table>
+    <scr`+`ipt>window.onload=function(){setTimeout(function(){window.print()},300)}</scr`+`ipt>
+    </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Permita pop-ups (janelas) no navegador para gerar o relatório.'); return; }
+  w.document.write(html);
+  w.document.close();
 }
 
 function exportCredenciamento() {
@@ -857,6 +1128,15 @@ function exportCredenciamento() {
   const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'Nº':'','Nome':''}]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Credenciamento');
+
+  // Aba de vendas no evento
+  const vendas = confirmed.filter(isBuyer).map((c, i) => ({
+    'Nº': i + 1, 'Nome': c.name, 'Valor pago': Number(c.valorVenda) || 0,
+    'Forma de Pagamento': c.formaPagamento || '', 'Telefone': c.phone || '',
+  }));
+  const wsV = XLSX.utils.json_to_sheet(vendas.length ? vendas : [{'Nº':'','Nome':'','Valor pago':'','Forma de Pagamento':'','Telefone':''}]);
+  XLSX.utils.book_append_sheet(wb, wsV, 'Vendas no evento');
+
   XLSX.writeFile(wb, `credenciamento-${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
@@ -976,7 +1256,8 @@ function normalizePhone(p) {
 
 document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
 document.getElementById('credModalBg').addEventListener('click', e => { if (e.target.id === 'credModalBg') closeCred(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); } });
+document.getElementById('vendaModalBg').addEventListener('click', e => { if (e.target.id === 'vendaModalBg') closeVenda(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); } });
 
 // ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────────
 
