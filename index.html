@@ -165,6 +165,7 @@
     <button onclick="document.getElementById('fileIn').click()">Importar Excel</button>
     <button class="primary" onclick="exportXlsx()">Exportar Excel (backup)</button>
     <span id="saveStatus" style="font-size:11px;color:var(--brand);opacity:0.45;transition:opacity 0.3s;font-weight:600;white-space:nowrap;">sincronizado</span>
+    <button onclick="logout()" title="Sair">Sair</button>
     <input type="file" id="fileIn" class="hidden-file" accept=".xlsx,.xls,.csv" onchange="importXlsx(event)">
   </div>
 </div>
@@ -977,10 +978,59 @@ document.getElementById('modalBg').addEventListener('click', e => { if (e.target
 document.getElementById('credModalBg').addEventListener('click', e => { if (e.target.id === 'credModalBg') closeCred(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); } });
 
-async function init() {
+// ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────────
+
+let appStarted = false;
+
+async function startApp() {
+  if (appStarted) return;
+  appStarted = true;
+  document.getElementById('authOverlay').style.display = 'none';
+  document.getElementById('loadingOverlay').style.display = 'flex';
   await fetchClients();
   setupRealtime();
   document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function showLogin() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+  document.getElementById('authOverlay').style.display = 'flex';
+  setTimeout(() => { const el = document.getElementById('authEmail'); if (el) el.focus(); }, 100);
+}
+
+async function doLogin() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass  = document.getElementById('authPass').value;
+  const errEl = document.getElementById('authError');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.textContent = 'Preencha e-mail e senha.'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('authBtn');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  const { error } = await db.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) {
+    errEl.textContent = 'E-mail ou senha incorretos.';
+    errEl.style.display = 'block';
+    return;
+  }
+  await startApp();
+}
+
+async function logout() {
+  await db.auth.signOut();
+  location.reload();
+}
+
+document.getElementById('authPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('authEmail').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+async function init() {
+  const { data } = await db.auth.getSession();
+  if (data.session) {
+    await startApp();
+  } else {
+    showLogin();
+  }
 }
 
 init();
