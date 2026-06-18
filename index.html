@@ -544,8 +544,22 @@ async function mentorAdd() {
   const phone = document.getElementById('mt_phone').value.trim();
   const note  = document.getElementById('mt_note').value.trim();
   if (!name) { alert('Coloque ao menos o nome.'); return; }
-  const ok = await insertClient({ name, phone, prod:'', list: PARTICIPAR_LIST, status:'em_aberto', tries:0, note });
-  if (!ok) return;
+  setSyncing(true);
+  const { data, error } = await db.rpc('indicar_participante', { p_nome: name, p_telefone: phone, p_obs: note });
+  setSyncing(false);
+  if (error) { alert('Erro ao indicar: ' + error.message); return; }
+
+  if (data === 'ja_confirmado') {
+    alert('⚠️ ' + name + ' já está CONFIRMADA(o) no evento. Não precisa indicar de novo.');
+    return; // não limpa, pra você ver o que digitou
+  }
+  if (data === 'ja_na_lista') {
+    alert('Essa pessoa já está na lista de participantes. Não dupliquei.');
+  } else if (data === 'movido') {
+    alert('Pronto! Já tínhamos contato com essa pessoa — coloquei na lista "Irão participar" para a equipe falar com ela novamente.');
+  } else {
+    alert('Indicação adicionada com sucesso! ✅');
+  }
   document.getElementById('mt_name').value = '';
   document.getElementById('mt_phone').value = '';
   document.getElementById('mt_note').value = '';
