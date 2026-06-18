@@ -56,6 +56,9 @@
   .card.dragging { opacity: 0.4; }
   .card.alert { border-color: var(--red); box-shadow: 0 0 0 1px rgba(248,113,113,0.4); }
   .card .name { font-size: 13px; font-weight: 700; margin-bottom: 4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; letter-spacing: -0.01em; }
+  .copy-name { cursor: pointer; border-bottom: 1px dashed var(--line-soft); transition: color 0.15s; }
+  .copy-name:hover { border-bottom-color: var(--brand); color: var(--brand); }
+  .copy-name.copied { color: var(--brand); border-bottom-color: transparent; }
   .card .prod { font-size: 10px; color: var(--brand); background: rgba(52,211,153,0.12); padding: 2px 7px; border-radius: 6px; font-weight: 600; }
   .card .phone { font-size: 12px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; margin-top: 3px; }
   .card .wa { color: var(--brand); text-decoration: none; font-weight: 600; }
@@ -606,7 +609,7 @@ function cardHtml(c, color) {
   const safeId = esc(c.id);
   return `<div class="card ${isAlert?'alert':''}" style="border-left-color:${color}" draggable="true"
        ondragstart="onDragStart(event,'${safeId}')" ondragend="onDragEnd(event)" onclick="openEdit('${safeId}')">
-    <div class="name">${esc(c.name)} ${isAlert?'<span class="alert-tag">5x sem resposta</span>':''}</div>
+    <div class="name"><span class="copy-name" onclick="event.stopPropagation();copyName(event)" title="clique para copiar o nome">${esc(c.name)}</span> ${isAlert?'<span class="alert-tag">5x sem resposta</span>':''}</div>
     ${c.prod?`<span class="prod">${esc(c.prod)}</span>`:''}
     <div class="phone">${esc(c.phone||'sem telefone')} ${wa?`· <a class="wa" href="${wa}" onclick="event.stopPropagation()">WhatsApp</a>`:''}</div>
     ${c.note?`<div class="note">${esc(c.note)}</div>`:''}
@@ -1404,6 +1407,36 @@ async function importXlsx(ev) {
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
+
+function copyName(e) {
+  const span = e.currentTarget;
+  if (span.dataset.busy) return;
+  const txt = (span.dataset.orig || span.textContent).trim();
+  const done = () => {
+    span.dataset.busy = '1';
+    span.dataset.orig = txt;
+    span.textContent = '✓ copiado';
+    span.classList.add('copied');
+    span.title = '✓ copiado!';
+    setTimeout(() => {
+      span.textContent = txt;
+      span.classList.remove('copied');
+      span.title = 'clique para copiar o nome';
+      delete span.dataset.busy;
+    }, 1000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done).catch(() => { fallbackCopy(txt); done(); });
+  } else { fallbackCopy(txt); done(); }
+}
+
+function fallbackCopy(txt) {
+  const ta = document.createElement('textarea');
+  ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+}
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
