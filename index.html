@@ -176,6 +176,19 @@
   .cf-field input, .cf-field select { width: 100%; font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--bg2); color: var(--ink); }
   .cf-field input:focus, .cf-field select:focus { outline: none; border-color: var(--brand); }
   @media (max-width: 520px) { .cf-grid { grid-template-columns: 1fr; } }
+  /* Acesso por papel */
+  .role-mentor .admin-only { display: none !important; }
+  .mentor-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 760px) { .mentor-wrap { grid-template-columns: 1fr; } }
+  .mentor-form, .mentor-list { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .mentor-form h2 { font-size: 17px; margin-bottom: 6px; }
+  .mentor-form p { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 14px; }
+  .mentor-form label { display: block; font-size: 11px; color: var(--ink-soft); margin: 14px 0 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .mentor-form input, .mentor-form textarea { width: 100%; font-family: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--bg2); color: var(--ink); resize: vertical; }
+  .mentor-form input:focus, .mentor-form textarea:focus { outline: none; border-color: var(--brand); }
+  .mentor-form button { width: 100%; margin-top: 18px; padding: 12px; }
+  .mentor-list h3 { font-size: 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .mentor-list .cred-checkin { margin-bottom: 8px; }
   /* Login */
   .auth-box { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; padding: 30px 32px; width: 100%; max-width: 360px; }
   .auth-box .auth-logo { width: 52px; height: 52px; border-radius: 13px; background: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #06281f; margin: 0 auto 12px; box-shadow: 0 2px 12px rgba(52,211,153,0.35); }
@@ -218,9 +231,9 @@
     <div class="txt"><h1>Eventos · CX</h1><span>Confirmação de clientes para o evento</span></div>
   </div>
   <div class="toolbar">
-    <button onclick="addCardPrompt()">+ Cliente</button>
-    <button onclick="document.getElementById('fileIn').click()">Importar Excel</button>
-    <button class="primary" onclick="exportXlsx()">Exportar Excel (backup)</button>
+    <button class="admin-only" onclick="addCardPrompt()">+ Cliente</button>
+    <button class="admin-only" onclick="document.getElementById('fileIn').click()">Importar Excel</button>
+    <button class="primary admin-only" onclick="exportXlsx()">Exportar Excel (backup)</button>
     <span id="saveStatus" style="font-size:11px;color:var(--brand);opacity:0.45;transition:opacity 0.3s;font-weight:600;white-space:nowrap;">sincronizado</span>
     <button onclick="logout()" title="Sair">Sair</button>
     <input type="file" id="fileIn" class="hidden-file" accept=".xlsx,.xls,.csv" onchange="importXlsx(event)">
@@ -309,10 +322,12 @@ const STATUSES = [
   { id: 'nao_vai',       label: 'Não vai',          color: '#f87171' },
 ];
 const LISTS = [
-  { id: 'upsell',  label: 'Upsell (só ingresso)' },
-  { id: 'novos',   label: 'Novos clientes' },
-  { id: 'antigos', label: 'Antigos / no-show' },
+  { id: 'upsell',     label: 'Upsell (só ingresso)' },
+  { id: 'novos',      label: 'Novos clientes' },
+  { id: 'antigos',    label: 'Antigos / no-show' },
+  { id: 'participar', label: 'Irão participar' },
 ];
+const PARTICIPAR_LIST = 'participar';
 const MAX_TRIES = 5;
 
 let clients = [];
@@ -324,6 +339,7 @@ let credMode = 'fichas';      // 'fichas' ou 'evento'
 let credSearch = '';          // texto de busca no modo evento
 let credEditingId = null;     // ficha aberta no formulário de credenciamento
 let vendaEditingId = null;    // venda aberta no modal de vendas
+let userRole = 'admin';       // 'admin' ou 'mentor' (vem do login)
 
 // Mapeia linha do banco para objeto do app
 function fromDb(row) {
@@ -464,6 +480,7 @@ function setSyncing(val) {
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 
 function render() {
+  if (userRole === 'mentor') { renderMentorApp(); return; }
   renderTabs();
   if (activeList === 'dashboard') {
     document.getElementById('stats').style.display = 'none';
@@ -490,6 +507,51 @@ function renderTabs() {
 }
 
 function setList(id) { activeList = id; render(); }
+
+// ── Tela do mentor (acesso restrito) ──
+function renderMentorApp() {
+  destroyCharts();
+  document.getElementById('stats').style.display = 'none';
+  document.getElementById('tabs').style.display = 'none';
+  const board = document.getElementById('board');
+  board.style.display = 'block';
+  const mine = clients.filter(c => c.list === PARTICIPAR_LIST);
+  const lista = mine.length
+    ? mine.map(c => `<div class="cred-checkin"><div><span class="ci-name">${esc(c.name)}</span>${c.phone?`<span class="ci-time">${esc(c.phone)}</span>`:''}</div></div>`).join('')
+    : '<div class="empty-hint">Você ainda não indicou ninguém.</div>';
+  board.innerHTML = `
+    <div class="mentor-wrap">
+      <div class="mentor-form">
+        <h2>Indicar quem vai participar</h2>
+        <p>Cadastre aqui os clientes que querem participar do evento. A equipe organiza a partir das suas indicações.</p>
+        <label>Nome *</label>
+        <input id="mt_name" type="text" placeholder="Nome do cliente">
+        <label>Telefone (WhatsApp)</label>
+        <input id="mt_phone" type="text" placeholder="(11) 99999-8888">
+        <label>Observação</label>
+        <textarea id="mt_note" rows="2" placeholder="Algo que a equipe precisa saber (opcional)"></textarea>
+        <button class="primary" onclick="mentorAdd()">+ Adicionar à lista</button>
+      </div>
+      <div class="mentor-list">
+        <h3>Suas indicações <span class="ev-cnt">${mine.length}</span></h3>
+        ${lista}
+      </div>
+    </div>`;
+}
+
+async function mentorAdd() {
+  const name  = document.getElementById('mt_name').value.trim();
+  const phone = document.getElementById('mt_phone').value.trim();
+  const note  = document.getElementById('mt_note').value.trim();
+  if (!name) { alert('Coloque ao menos o nome.'); return; }
+  const ok = await insertClient({ name, phone, prod:'', list: PARTICIPAR_LIST, status:'em_aberto', tries:0, note });
+  if (!ok) return;
+  document.getElementById('mt_name').value = '';
+  document.getElementById('mt_phone').value = '';
+  document.getElementById('mt_note').value = '';
+  await fetchClients();
+  document.getElementById('mt_name').focus();
+}
 
 function renderStats() {
   const inList = clients.filter(c => c.list === activeList);
@@ -1353,11 +1415,19 @@ let appStarted = false;
 async function startApp() {
   if (appStarted) return;
   appStarted = true;
+  const { data: { session } } = await db.auth.getSession();
+  userRole = (session && session.user && session.user.app_metadata && session.user.app_metadata.role) || 'admin';
+  applyRoleUI();
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'flex';
   await fetchClients();
   setupRealtime();
   document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+function applyRoleUI() {
+  if (userRole === 'mentor') document.body.classList.add('role-mentor');
+  else document.body.classList.remove('role-mentor');
 }
 
 function showLogin() {
