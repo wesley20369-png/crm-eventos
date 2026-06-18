@@ -163,6 +163,11 @@
   .vd-tag { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: rgba(52,211,153,0.15); color: var(--brand); text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
   /* Formulário compacto da ficha */
   .cred-modal { max-width: 600px; }
+  .cf-paste { background: var(--bg2); border: 1px dashed var(--line-soft); border-radius: 11px; padding: 14px; margin-bottom: 6px; }
+  .cf-paste label { display: block; font-size: 11px; color: var(--brand); margin-bottom: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .cf-paste textarea { width: 100%; font-family: inherit; font-size: 13px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--surface); color: var(--ink); resize: vertical; }
+  .cf-paste textarea:focus { outline: none; border-color: var(--brand); }
+  .cf-paste button { margin-top: 10px; width: 100%; }
   .cf-group-title { font-size: 11px; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: 0.05em; margin: 18px 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
   .cf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
   .cf-field { display: flex; flex-direction: column; }
@@ -970,11 +975,93 @@ function openCred(id) {
   if (!c) return;
   document.getElementById('credModalTitle').textContent = 'Ficha — ' + (c.name || '');
   const form = document.getElementById('credForm');
-  form.innerHTML = CRED_GROUPS.map(g => `
+  const pasteBox = `
+    <div class="cf-paste">
+      <label>⚡ Preenchimento rápido — cole aqui a mensagem do cliente</label>
+      <textarea id="cf_paste" rows="3" placeholder="Cole tudo de uma vez. Ex:&#10;Nome: João Silva&#10;CPF: 123.456.789-00&#10;E-mail: joao@gmail.com&#10;Telefone: (11) 99999-8888&#10;Instagram: @joao"></textarea>
+      <button type="button" class="primary" id="cf_paste_btn" onclick="autoFillFromPaste()">✨ Preencher automaticamente</button>
+    </div>`;
+  form.innerHTML = pasteBox + CRED_GROUPS.map(g => `
     <div class="cf-group-title">${g.title}</div>
     <div class="cf-grid">${g.fields.map(f => credFieldHtml(f, c)).join('')}</div>`).join('');
   document.getElementById('credModalBg').classList.add('show');
-  setTimeout(() => { const el = document.getElementById('cf_cpf'); if (el) el.focus(); }, 80);
+  setTimeout(() => { const el = document.getElementById('cf_paste'); if (el) el.focus(); }, 80);
+}
+
+// Identifica cada dado dentro de um texto colado e distribui nos campos
+function parseClientBlob(text) {
+  const out = {};
+  const LABELS = {
+    name:           ['nome','name','cliente'],
+    cpf:            ['cpf'],
+    email:          ['email','e-mail','e mail','mail'],
+    phone:          ['telefone','tel','whatsapp','whats','celular','fone','contato','numero','número'],
+    instagram:      ['instagram','insta','arroba','perfil','ig'],
+    potencial:      ['potencial','potencial de compra'],
+    satisfacao:     ['satisfacao','satisfação','satisfacao no ecossistema','satisfação no ecossistema'],
+    plano:          ['plano'],
+    origem:         ['origem'],
+    mentor:         ['mentor'],
+    vendedor:       ['vendedor','vendedora'],
+    faturamento:    ['faturamento','faturacao','faturação','fatura'],
+    formaPagamento: ['forma de pagamento','pagamento','forma pgto','pgto','forma'],
+    grupoOficial:   ['grupo oficial','grupo'],
+    confirmacao:    ['confirmacao','confirmação','confirmado'],
+  };
+  const boolKeys = ['grupoOficial','confirmacao'];
+
+  // 1) Linhas no formato "rótulo: valor"
+  text.split(/\r?\n/).forEach(line => {
+    const idx = line.indexOf(':');
+    if (idx === -1) return;
+    const rawKey = norm(line.slice(0, idx));
+    const val = line.slice(idx + 1).trim();
+    if (!val) return;
+    for (const fk in LABELS) {
+      if (LABELS[fk].some(lbl => { const n = norm(lbl); return rawKey === n || rawKey.includes(n); })) {
+        if (boolKeys.includes(fk)) out[fk] = /n[ãa]o|^nao|no$/i.test(val) ? false : true;
+        else if (!out[fk]) out[fk] = val;
+        break;
+      }
+    }
+  });
+
+  // 2) Detecção por padrão (preenche o que ainda estiver vazio)
+  const emailM = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (emailM && !out.email) out.email = emailM[0];
+
+  let semEmail = text.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, ' ');
+  const instaM = semEmail.match(/@[A-Za-z0-9._]{2,}/);
+  if (instaM && !out.instagram) out.instagram = instaM[0];
+
+  const cpfM = text.match(/\d{3}\.?\s?\d{3}\.?\s?\d{3}\s?-?\s?\d{2}/);
+  if (cpfM && !out.cpf) out.cpf = cpfM[0].replace(/\s/g, '');
+
+  if (!out.phone) {
+    let semCpf = text.replace(/\d{3}\.?\s?\d{3}\.?\s?\d{3}\s?-?\s?\d{2}/g, ' ');
+    const phoneM = semCpf.match(/\(?\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}/);
+    if (phoneM) out.phone = phoneM[0].trim();
+  }
+  return out;
+}
+
+function autoFillFromPaste() {
+  const ta = document.getElementById('cf_paste');
+  if (!ta || !ta.value.trim()) return;
+  const found = parseClientBlob(ta.value);
+  let n = 0;
+  Object.keys(found).forEach(k => {
+    const el = document.getElementById('cf_' + k);
+    if (!el) return;
+    if (el.tagName === 'SELECT') el.value = found[k] ? 'sim' : 'nao';
+    else el.value = found[k];
+    n++;
+  });
+  const btn = document.getElementById('cf_paste_btn');
+  if (btn) {
+    btn.textContent = n ? `✓ ${n} campo(s) preenchido(s) — confira e salve` : 'Nada identificado — preencha manualmente';
+    setTimeout(() => { btn.textContent = '✨ Preencher automaticamente'; }, 2500);
+  }
 }
 
 function credFieldHtml(f, c) {
