@@ -4,6 +4,9 @@ clientes-para-carga-inicial.csv
 clientes-para-carga-inicial.xlsx
 briefing-crm-nuvem.md
 
+# Configuração local do Claude Code
+.claude/
+
 # Diversos
 *.log
 .DS_Store
