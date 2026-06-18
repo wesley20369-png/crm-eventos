@@ -91,6 +91,41 @@
   .loading-box { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 32px 40px; text-align: center; }
   .loading-box .spinner { width: 36px; height: 36px; border: 3px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  /* Credenciamento */
+  .seg { background: transparent; border: none; color: var(--ink-soft); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; }
+  .seg:hover { background: var(--surface); color: var(--ink); border: none; }
+  .seg.on { background: var(--brand); color: #06281f; }
+  .seg.on:hover { background: var(--brand); }
+  .cred-list { display: flex; flex-direction: column; gap: 8px; }
+  .cred-row { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 11px; padding: 13px 16px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .cred-row:hover { border-color: var(--brand); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+  .cred-row-main { display: flex; align-items: center; gap: 12px; }
+  .cred-name { font-size: 14px; font-weight: 700; }
+  .cred-row-info { font-size: 11px; color: var(--ink-dim); }
+  .cred-status { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+  .cred-status.ok { background: rgba(52,211,153,0.15); color: var(--brand); }
+  .cred-status.pend { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .cred-counter { font-size: 14px; color: var(--ink-soft); margin-bottom: 14px; }
+  .cred-counter .big { font-size: 26px; font-weight: 800; color: var(--ink); margin-right: 6px; letter-spacing: -0.02em; }
+  .cred-counter .big b { color: var(--brand); }
+  .cred-search { width: 100%; font-family: inherit; font-size: 16px; padding: 14px 16px; border: 1px solid var(--line-soft); border-radius: 11px; background: var(--surface); color: var(--ink); margin-bottom: 16px; }
+  .cred-search:focus { outline: none; border-color: var(--brand); }
+  #credEventoList { display: flex; flex-direction: column; gap: 8px; }
+  .cred-checkin { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cred-checkin.done { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.4); }
+  .ci-name { font-size: 16px; font-weight: 700; }
+  .ci-time { font-size: 12px; color: var(--brand); font-weight: 600; margin-left: 12px; }
+  .ci-btn { background: var(--brand); color: #06281f; border: none; font-size: 14px; font-weight: 800; padding: 12px 26px; border-radius: 10px; letter-spacing: 0.03em; }
+  .ci-btn:hover { background: var(--brand-dark); }
+  .ci-btn.undo { background: transparent; color: var(--ink-soft); border: 1px solid var(--line-soft); font-size: 12px; font-weight: 600; padding: 8px 14px; letter-spacing: 0; }
+  .ci-btn.undo:hover { color: var(--red); border-color: var(--red); }
+  /* Login */
+  .auth-box { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 16px; padding: 30px 32px; width: 100%; max-width: 360px; }
+  .auth-box .auth-logo { width: 52px; height: 52px; border-radius: 13px; background: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; color: #06281f; margin: 0 auto 12px; box-shadow: 0 2px 12px rgba(52,211,153,0.35); }
+  .auth-box label { display: block; font-size: 11px; color: var(--ink-soft); margin: 16px 0 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .auth-box input { width: 100%; font-family: inherit; font-size: 15px; padding: 11px 13px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--bg2); color: var(--ink); }
+  .auth-box input:focus { outline: none; border-color: var(--brand); }
+  .auth-box .auth-btn { width: 100%; margin-top: 20px; padding: 12px; font-size: 14px; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: 5px; }
@@ -103,6 +138,20 @@
     <div class="spinner"></div>
     <div style="font-size:15px;font-weight:700;margin-bottom:6px">Carregando CRM...</div>
     <div style="font-size:12px;color:var(--ink-soft)">Conectando ao banco de dados</div>
+  </div>
+</div>
+
+<div id="authOverlay" class="loading-overlay" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">CX</div>
+    <div style="text-align:center;font-size:18px;font-weight:800;letter-spacing:-0.02em">Eventos · CX</div>
+    <div style="text-align:center;font-size:12px;color:var(--ink-soft);margin-top:3px">Acesso restrito · entre para continuar</div>
+    <label>E-mail</label>
+    <input id="authEmail" type="email" autocomplete="username" placeholder="seu@email.com">
+    <label>Senha</label>
+    <input id="authPass" type="password" autocomplete="current-password" placeholder="••••••••">
+    <div id="authError" style="display:none;color:var(--red);font-size:12px;margin-top:12px;font-weight:600"></div>
+    <button id="authBtn" class="primary auth-btn" onclick="doLogin()">Entrar</button>
   </div>
 </div>
 
@@ -147,6 +196,17 @@
   </div>
 </div>
 
+<div class="modal-bg" id="credModalBg">
+  <div class="modal">
+    <h3>Ficha de credenciamento</h3>
+    <div id="credForm"></div>
+    <div class="modal-actions">
+      <button onclick="closeCred()">Cancelar</button>
+      <button class="primary" onclick="saveCred()">Salvar ficha</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── CONFIGURAÇÃO SUPABASE ────────────────────────────────────────────────────
 // Substitua os valores abaixo pelas credenciais do seu projeto Supabase
@@ -177,6 +237,9 @@ let activeList = 'upsell';
 let editingId = null;
 let dragId = null;
 let isSyncing = false;
+let credMode = 'fichas';      // 'fichas' ou 'evento'
+let credSearch = '';          // texto de busca no modo evento
+let credEditingId = null;     // ficha aberta no formulário de credenciamento
 
 // Mapeia linha do banco para objeto do app
 function fromDb(row) {
@@ -189,8 +252,36 @@ function fromDb(row) {
     status: row.status     || 'em_contato',
     tries:  row.tentativas || 0,
     note:   row.observacao || '',
+    // Campos de credenciamento
+    potencial:      row.potencial_compra       || '',
+    satisfacao:     row.satisfacao_ecossistema || '',
+    plano:          row.plano                   || '',
+    origem:         row.origem                  || '',
+    mentor:         row.mentor                  || '',
+    vendedor:       row.vendedor                || '',
+    faturamento:    row.faturamento             || '',
+    formaPagamento: row.forma_pagamento         || '',
+    instagram:      row.instagram               || '',
+    cpf:            row.cpf                      || '',
+    email:          row.email                    || '',
+    grupoOficial:   !!row.grupo_oficial,
+    confirmacao:    !!row.confirmacao,
+    presente:       !!row.presente,
+    horarioChegada: row.horario_chegada         || null,
   };
 }
+
+// Mapeamento campo-do-app -> coluna-do-banco (para updates seletivos)
+const FIELD_MAP = {
+  name: 'nome', phone: 'telefone', prod: 'produto', list: 'lista',
+  status: 'status', tries: 'tentativas', note: 'observacao',
+  potencial: 'potencial_compra', satisfacao: 'satisfacao_ecossistema',
+  plano: 'plano', origem: 'origem', mentor: 'mentor', vendedor: 'vendedor',
+  faturamento: 'faturamento', formaPagamento: 'forma_pagamento',
+  instagram: 'instagram', cpf: 'cpf', email: 'email',
+  grupoOficial: 'grupo_oficial', confirmacao: 'confirmacao',
+  presente: 'presente', horarioChegada: 'horario_chegada',
+};
 
 // Mapeia objeto do app para linha do banco
 function toDb(c) {
@@ -233,13 +324,9 @@ async function insertClient(c) {
 async function updateClient(id, fields) {
   setSyncing(true);
   const dbFields = {};
-  if ('name'   in fields) dbFields.nome       = fields.name;
-  if ('phone'  in fields) dbFields.telefone   = fields.phone;
-  if ('prod'   in fields) dbFields.produto    = fields.prod;
-  if ('list'   in fields) dbFields.lista      = fields.list;
-  if ('status' in fields) dbFields.status     = fields.status;
-  if ('tries'  in fields) dbFields.tentativas = fields.tries;
-  if ('note'   in fields) dbFields.observacao = fields.note;
+  for (const key in fields) {
+    if (FIELD_MAP[key]) dbFields[FIELD_MAP[key]] = fields[key];
+  }
   dbFields.atualizado_em = new Date().toISOString();
   const { error } = await db.from('clientes').update(dbFields).eq('id', id);
   setSyncing(false);
@@ -294,6 +381,9 @@ function render() {
   if (activeList === 'dashboard') {
     document.getElementById('stats').style.display = 'none';
     renderDashboard();
+  } else if (activeList === 'credenciamento') {
+    document.getElementById('stats').style.display = 'none';
+    renderCredenciamento();
   } else {
     document.getElementById('stats').style.display = 'flex';
     renderStats();
@@ -307,6 +397,8 @@ function renderTabs() {
     const n = clients.filter(c => c.list === l.id).length;
     return `<div class="tab ${l.id===activeList?'active':''}" onclick="setList('${l.id}')">${l.label}<span class="count">${n}</span></div>`;
   }).join('');
+  const nConf = clients.filter(c => c.status === 'confirmou').length;
+  tabs += `<div class="tab ${activeList==='credenciamento'?'active':''}" onclick="setList('credenciamento')">🎫 Credenciamento<span class="count">${nConf}</span></div>`;
   document.getElementById('tabs').innerHTML = tabs;
 }
 
@@ -578,6 +670,195 @@ function drawCharts(g, ls) {
   }
 }
 
+// ─── CREDENCIAMENTO ───────────────────────────────────────────────────────────
+
+const CRED_FIELDS = [
+  { key:'name',           label:'Nome',                    type:'text' },
+  { key:'potencial',      label:'Potencial de compra',     type:'text' },
+  { key:'satisfacao',     label:'Satisfação no Ecossistema', type:'text' },
+  { key:'plano',          label:'Plano',                   type:'text' },
+  { key:'origem',         label:'Origem',                  type:'text' },
+  { key:'mentor',         label:'Mentor',                  type:'text' },
+  { key:'vendedor',       label:'Vendedor',                type:'text' },
+  { key:'faturamento',    label:'Faturamento',             type:'text' },
+  { key:'formaPagamento', label:'Forma de Pagamento',      type:'text' },
+  { key:'instagram',      label:'Instagram (@)',           type:'text' },
+  { key:'cpf',            label:'CPF',                     type:'text' },
+  { key:'email',          label:'E-mail',                  type:'text' },
+  { key:'phone',          label:'Telefone',                type:'text' },
+  { key:'grupoOficial',   label:'Grupo Oficial',           type:'bool' },
+  { key:'confirmacao',    label:'Confirmação',             type:'bool' },
+  { key:'presente',       label:'Presença (chegou ao evento)', type:'bool' },
+];
+
+function credConfirmed() { return clients.filter(c => c.status === 'confirmou'); }
+
+function isCredComplete(c) {
+  return !!(c.cpf && c.cpf.trim() && c.email && c.email.trim() && c.instagram && c.instagram.trim());
+}
+
+// Normaliza texto p/ busca: sem acento, minúsculo
+function norm(s) {
+  return String(s == null ? '' : s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+function setCredMode(m) { credMode = m; render(); }
+
+function renderCredenciamento() {
+  destroyCharts();
+  const board = document.getElementById('board');
+  board.style.display = 'block';
+  const confirmed = credConfirmed();
+  board.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      <div style="display:flex;gap:6px;background:var(--bg2);padding:5px;border-radius:11px;border:1px solid var(--line)">
+        <button class="seg ${credMode==='fichas'?'on':''}" onclick="setCredMode('fichas')">📋 Fichas de dados</button>
+        <button class="seg ${credMode==='evento'?'on':''}" onclick="setCredMode('evento')">✅ Dia do evento</button>
+      </div>
+      <button class="primary" style="margin-left:auto" onclick="exportCredenciamento()">Exportar credenciamento (Excel)</button>
+    </div>
+    ${credMode === 'fichas' ? credFichasHtml(confirmed) : credEventoHtml(confirmed)}`;
+}
+
+function credFichasHtml(confirmed) {
+  if (!confirmed.length) return '<div class="empty-hint">Nenhum cliente confirmado ainda. Confirme clientes no kanban para credenciá-los aqui.</div>';
+  const completos = confirmed.filter(isCredComplete).length;
+  const rows = confirmed.map(c => {
+    const ok = isCredComplete(c);
+    const safeId = esc(c.id);
+    return `<div class="cred-row" onclick="openCred('${safeId}')">
+      <div class="cred-row-main">
+        <span class="cred-status ${ok?'ok':'pend'}">${ok?'✓ completo':'faltam dados'}</span>
+        <span class="cred-name">${esc(c.name)}</span>
+      </div>
+      <div class="cred-row-info">${c.plano?esc(c.plano)+' · ':''}${c.cpf?'CPF ✓':'sem CPF'} · ${c.email?'e-mail ✓':'sem e-mail'} · ${c.instagram?'@ ✓':'sem @'}</div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-bottom:14px;font-size:13px;color:var(--ink-soft)"><b style="color:var(--brand)">${completos}</b> de <b>${confirmed.length}</b> com dados completos (CPF, e-mail e Instagram)</div>
+    <div class="cred-list">${rows}</div>`;
+}
+
+function credEventoHtml(confirmed) {
+  const presentes = confirmed.filter(c => c.presente).length;
+  return `
+    <div class="cred-counter"><span class="big"><b>${presentes}</b> de <b>${confirmed.length}</b></span> presentes</div>
+    <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
+    <div id="credEventoList">${credEventoListHtml(confirmed)}</div>`;
+}
+
+function credEventoListHtml(confirmed) {
+  const q = norm(credSearch);
+  let list = confirmed.filter(c => !q || norm(c.name).includes(q));
+  list.sort((a, b) => {
+    if (!!a.presente !== !!b.presente) return a.presente ? 1 : -1; // não-presentes primeiro
+    return norm(a.name).localeCompare(norm(b.name));
+  });
+  if (!list.length) return '<div class="empty-hint">Ninguém encontrado.</div>';
+  return list.map(c => {
+    const safeId = esc(c.id);
+    const hora = c.horarioChegada ? new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    if (c.presente) {
+      return `<div class="cred-checkin done">
+        <div><span class="ci-name">${esc(c.name)}</span><span class="ci-time">✓ chegou ${hora}</span></div>
+        <button class="ci-btn undo" onclick="undoCheckin('${safeId}')">desfazer</button>
+      </div>`;
+    }
+    return `<div class="cred-checkin">
+      <span class="ci-name">${esc(c.name)}</span>
+      <button class="ci-btn" onclick="doCheckin('${safeId}')">CHEGOU</button>
+    </div>`;
+  }).join('');
+}
+
+function onCredSearch(val) {
+  credSearch = val;
+  const el = document.getElementById('credEventoList');
+  if (el) el.innerHTML = credEventoListHtml(credConfirmed());
+}
+
+async function doCheckin(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  c.presente = true;
+  c.horarioChegada = new Date().toISOString();
+  render();
+  await updateClient(id, { presente: true, horarioChegada: c.horarioChegada });
+}
+
+async function undoCheckin(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  c.presente = false;
+  c.horarioChegada = null;
+  render();
+  await updateClient(id, { presente: false, horarioChegada: null });
+}
+
+function openCred(id) {
+  credEditingId = id;
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const form = document.getElementById('credForm');
+  form.innerHTML = CRED_FIELDS.map(f => {
+    if (f.type === 'bool') {
+      return `<label>${f.label}</label>
+        <select id="cf_${f.key}">
+          <option value="nao" ${!c[f.key]?'selected':''}>Não</option>
+          <option value="sim" ${c[f.key]?'selected':''}>Sim</option>
+        </select>`;
+    }
+    return `<label>${f.label}</label><input id="cf_${f.key}" type="text" value="${esc(c[f.key]||'')}">`;
+  }).join('');
+  document.getElementById('credModalBg').classList.add('show');
+}
+
+function closeCred() { document.getElementById('credModalBg').classList.remove('show'); credEditingId = null; }
+
+async function saveCred() {
+  if (!credEditingId) return;
+  const c = clients.find(x => x.id === credEditingId) || {};
+  const fields = {};
+  CRED_FIELDS.forEach(f => {
+    const el = document.getElementById('cf_' + f.key);
+    if (!el) return;
+    fields[f.key] = (f.type === 'bool') ? (el.value === 'sim') : el.value.trim();
+  });
+  // mantém coerência do horário de chegada com o campo presença
+  if (fields.presente && !c.horarioChegada) fields.horarioChegada = new Date().toISOString();
+  if (!fields.presente) fields.horarioChegada = null;
+  const id = credEditingId;
+  closeCred();
+  await updateClient(id, fields);
+}
+
+function exportCredenciamento() {
+  const confirmed = credConfirmed();
+  const rows = confirmed.map((c, i) => ({
+    'Nº': i + 1,
+    'Nome': c.name,
+    'Potencial de compra': c.potencial || '',
+    'Satisfação no Ecossistema': c.satisfacao || '',
+    'Plano': c.plano || '',
+    'Origem': c.origem || '',
+    'Mentor': c.mentor || '',
+    'Vendedor': c.vendedor || '',
+    'Faturamento': c.faturamento || '',
+    'Forma de Pagamento': c.formaPagamento || '',
+    'QTD': '',
+    'Instagram': c.instagram || '',
+    'CPF': c.cpf || '',
+    'Email': c.email || '',
+    'Telefone': c.phone || '',
+    'Grupo Oficial': c.grupoOficial ? 'Sim' : 'Não',
+    'Confirmação': c.confirmacao ? 'Sim' : 'Não',
+    'Presença': c.presente ? ('Sim' + (c.horarioChegada ? ' ' + new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '')) : 'Não',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'Nº':'','Nome':''}]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Credenciamento');
+  XLSX.writeFile(wb, `credenciamento-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 // ─── EXCEL ────────────────────────────────────────────────────────────────────
 
 function exportXlsx() {
@@ -693,7 +974,8 @@ function normalizePhone(p) {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 
 document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.getElementById('credModalBg').addEventListener('click', e => { if (e.target.id === 'credModalBg') closeCred(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); } });
 
 async function init() {
   await fetchClients();
