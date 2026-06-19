@@ -1006,6 +1006,7 @@ function renderCredenciamento() {
       </div>
       <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
         <button onclick="gerarRelatorio()">📄 Gerar relatório</button>
+        <button onclick="copiarParaSheets()">📊 Copiar p/ Sheets</button>
         <button class="primary" onclick="exportCredenciamento()">Exportar Excel</button>
       </div>
     </div>
@@ -1379,9 +1380,9 @@ function gerarRelatorio() {
   w.document.close();
 }
 
-function exportCredenciamento() {
-  const confirmed = credConfirmed();
-  const rows = confirmed.map((c, i) => ({
+// Linhas no formato exato da planilha do Google (mesma ordem de colunas)
+function credRows() {
+  return credConfirmed().map((c, i) => ({
     'Nº': i + 1,
     'Nome': c.name,
     'Potencial de compra': c.potencial || '',
@@ -1401,6 +1402,26 @@ function exportCredenciamento() {
     'Confirmação': c.confirmacao ? 'Sim' : 'Não',
     'Presença': c.presente ? ('Sim' + (c.horarioChegada ? ' ' + new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '')) : 'Não',
   }));
+}
+
+// Copia em formato tabela (TSV) pra colar direto no Google Sheets
+function copiarParaSheets() {
+  const rows = credRows();
+  if (!rows.length) { alert('Não há confirmados para exportar.'); return; }
+  const headers = Object.keys(rows[0]);
+  const limpa = v => String(v == null ? '' : v).replace(/[\t\n\r]/g, ' ');
+  const tsv = [headers.join('\t')]
+    .concat(rows.map(r => headers.map(h => limpa(r[h])).join('\t')))
+    .join('\n');
+  const ok = () => alert('✓ Copiado! Agora abra sua planilha do Google, clique na primeira célula (A1) e cole com Ctrl+V.');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tsv).then(ok).catch(() => { fallbackCopy(tsv); ok(); });
+  } else { fallbackCopy(tsv); ok(); }
+}
+
+function exportCredenciamento() {
+  const confirmed = credConfirmed();
+  const rows = credRows();
   const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{'Nº':'','Nome':''}]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Credenciamento');
