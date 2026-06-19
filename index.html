@@ -179,6 +179,12 @@
   .cf-field input, .cf-field select { width: 100%; font-family: inherit; font-size: 14px; padding: 9px 11px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--bg2); color: var(--ink); }
   .cf-field input:focus, .cf-field select:focus { outline: none; border-color: var(--brand); }
   @media (max-width: 520px) { .cf-grid { grid-template-columns: 1fr; } }
+  /* Barra de seleção de evento */
+  .evbar { display: flex; align-items: center; gap: 10px; padding: 12px 28px; background: var(--bg2); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .evbar-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .evbar select { font-family: inherit; font-size: 13px; font-weight: 600; padding: 8px 12px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--surface); color: var(--ink); min-width: 220px; cursor: pointer; }
+  .evbar select:focus { outline: none; border-color: var(--brand); }
+  .evbar #evStarBtn.on { background: var(--brand); color: #06281f; border-color: var(--brand); }
   /* Acesso por papel */
   .role-mentor .admin-only { display: none !important; }
   .mentor-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
@@ -243,6 +249,13 @@
   </div>
 </div>
 
+<div class="evbar admin-only">
+  <span class="evbar-label">📅 Evento:</span>
+  <select id="eventoSelect" onchange="trocarEvento(this.value)"></select>
+  <button id="evStarBtn" onclick="marcarEventoAtivo()" title="O evento ativo é o que recebe entradas automáticas (Onprofit)">☆ tornar ativo</button>
+  <button onclick="abrirNovoEvento()">+ Novo evento</button>
+</div>
+
 <div class="banner">
   <span class="status-dot" id="connDot"></span>
   <span id="connText">Conectado ao banco de dados — <b>tempo real ativo</b>. Alterações aparecem automaticamente para todos os usuários.</span>
@@ -266,6 +279,19 @@
       <button class="del" id="mDel" onclick="deleteCard()">Excluir</button>
       <button onclick="closeModal()">Cancelar</button>
       <button class="primary" onclick="saveCard()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="eventoModalBg">
+  <div class="modal" style="max-width:400px">
+    <h3>Novo evento</h3>
+    <label>Nome do evento</label><input id="ev_nome" type="text" placeholder="Ex: Imersão Método Audience 8.0">
+    <label>Data</label><input id="ev_data" type="text" placeholder="Ex: 7 e 8 de agosto">
+    <label>Local</label><input id="ev_local" type="text" placeholder="(opcional)">
+    <div class="modal-actions">
+      <button onclick="closeEventoModal()">Cancelar</button>
+      <button class="primary" onclick="salvarEvento()">Criar evento</button>
     </div>
   </div>
 </div>
@@ -343,6 +369,8 @@ let credSearch = '';          // texto de busca no modo evento
 let credEditingId = null;     // ficha aberta no formulário de credenciamento
 let vendaEditingId = null;    // venda aberta no modal de vendas
 let userRole = 'admin';       // 'admin' ou 'mentor' (vem do login)
+let eventos = [];             // lista de eventos
+let currentEvento = localStorage.getItem('crm_evento_atual') || null; // evento selecionado
 
 // Mapeia linha do banco para objeto do app
 function fromDb(row) {
@@ -399,17 +427,29 @@ function toDb(c) {
     status:      c.status,
     tentativas:  c.tries    || 0,
     observacao:  c.note     || '',
+    evento_id:   currentEvento || null,
     atualizado_em: new Date().toISOString(),
   };
 }
 
 // ─── CAMADA DE DADOS ──────────────────────────────────────────────────────────
 
+async function fetchEventos() {
+  const { data, error } = await db.from('eventos').select('*').order('created_at', { ascending: true });
+  if (error) { console.error('Erro ao carregar eventos:', error); return; }
+  eventos = data || [];
+  if (!currentEvento || !eventos.find(e => e.id === currentEvento)) {
+    const ativo = eventos.find(e => e.ativo) || eventos[0];
+    currentEvento = ativo ? ativo.id : null;
+  }
+  if (currentEvento) localStorage.setItem('crm_evento_atual', currentEvento);
+}
+
 async function fetchClients() {
-  const { data, error } = await db
-    .from('clientes')
-    .select('*')
-    .order('atualizado_em', { ascending: true });
+  let q = db.from('clientes').select('*').order('atualizado_em', { ascending: true });
+  // Admin vê os clientes do evento selecionado; mentor é filtrado pelo RLS (próprias indicações)
+  if (userRole === 'admin' && currentEvento) q = q.eq('evento_id', currentEvento);
+  const { data, error } = await q;
   if (error) {
     console.error('Erro ao carregar clientes:', error);
     setConnStatus(false);
@@ -457,6 +497,14 @@ function setupRealtime() {
     .subscribe((status) => {
       setConnStatus(status === 'SUBSCRIBED');
     });
+  if (userRole === 'admin') {
+    db.channel('eventos-all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos' }, async () => {
+        await fetchEventos();
+        renderEventoSelector();
+      })
+      .subscribe();
+  }
 }
 
 function setConnStatus(connected) {
@@ -510,6 +558,68 @@ function renderTabs() {
 }
 
 function setList(id) { activeList = id; render(); }
+
+// ── Seletor de eventos ──
+function renderEventoSelector() {
+  const sel = document.getElementById('eventoSelect');
+  if (!sel) return;
+  sel.innerHTML = eventos.map(e =>
+    `<option value="${esc(e.id)}" ${e.id===currentEvento?'selected':''}>${esc(e.nome)}${e.data?(' — '+esc(e.data)):''}</option>`
+  ).join('');
+  const cur = eventos.find(e => e.id === currentEvento);
+  const star = document.getElementById('evStarBtn');
+  if (star) {
+    const isActive = !!(cur && cur.ativo);
+    star.textContent = isActive ? '★ evento ativo' : '☆ tornar ativo';
+    star.classList.toggle('on', isActive);
+    star.disabled = isActive;
+  }
+}
+
+async function trocarEvento(id) {
+  currentEvento = id;
+  localStorage.setItem('crm_evento_atual', id);
+  await fetchClients();
+  renderEventoSelector();
+}
+
+async function marcarEventoAtivo() {
+  if (!currentEvento) return;
+  setSyncing(true);
+  const { error } = await db.from('eventos').update({ ativo: true }).eq('id', currentEvento);
+  setSyncing(false);
+  if (error) { alert('Erro ao marcar evento ativo: ' + error.message); return; }
+  await fetchEventos();
+  renderEventoSelector();
+}
+
+function abrirNovoEvento() {
+  document.getElementById('ev_nome').value = '';
+  document.getElementById('ev_data').value = '';
+  document.getElementById('ev_local').value = '';
+  document.getElementById('eventoModalBg').classList.add('show');
+  setTimeout(() => { const el = document.getElementById('ev_nome'); if (el) el.focus(); }, 80);
+}
+function closeEventoModal() { document.getElementById('eventoModalBg').classList.remove('show'); }
+
+async function salvarEvento() {
+  const nome = document.getElementById('ev_nome').value.trim();
+  if (!nome) { alert('Coloque ao menos o nome do evento.'); return; }
+  const data  = document.getElementById('ev_data').value.trim();
+  const local = document.getElementById('ev_local').value.trim();
+  setSyncing(true);
+  const { data: rows, error } = await db.from('eventos').insert({ nome, data, local }).select();
+  setSyncing(false);
+  if (error) { alert('Erro ao criar evento: ' + error.message); return; }
+  closeEventoModal();
+  await fetchEventos();
+  if (rows && rows[0]) {
+    currentEvento = rows[0].id;
+    localStorage.setItem('crm_evento_atual', currentEvento);
+  }
+  await fetchClients();
+  renderEventoSelector();
+}
 
 // ── Tela do mentor (acesso restrito) ──
 function renderMentorApp() {
@@ -1380,12 +1490,14 @@ async function importXlsx(ev) {
         });
       });
       if (!imported.length) { alert('Não encontrei clientes. A planilha precisa ter uma coluna "NOME".'); ev.target.value=''; return; }
-      if (!confirm(`Importar ${imported.length} clientes?\n\nISTO VAI APAGAR todos os clientes atuais do banco e inserir os da planilha.\n\nContinuar?`)) { ev.target.value=''; return; }
+      if (!currentEvento) { alert('Selecione ou crie um evento antes de importar.'); ev.target.value=''; return; }
+      const nomeEvento = (eventos.find(e => e.id === currentEvento) || {}).nome || 'este evento';
+      if (!confirm(`Importar ${imported.length} clientes para "${nomeEvento}"?\n\nISTO VAI APAGAR os clientes ATUAIS DESTE EVENTO e inserir os da planilha. Outros eventos não são afetados.\n\nContinuar?`)) { ev.target.value=''; return; }
 
       setSyncing(true);
-      // Apaga tudo e insere os novos
-      const { error: delErr } = await db.from('clientes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (delErr) { alert('Erro ao limpar banco: ' + delErr.message); setSyncing(false); ev.target.value=''; return; }
+      // Apaga só os clientes deste evento e insere os novos
+      const { error: delErr } = await db.from('clientes').delete().eq('evento_id', currentEvento);
+      if (delErr) { alert('Erro ao limpar evento: ' + delErr.message); setSyncing(false); ev.target.value=''; return; }
 
       const rows = imported.map(c => toDb(c));
       const { error: insErr } = await db.from('clientes').insert(rows);
@@ -1453,7 +1565,8 @@ function normalizePhone(p) {
 document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
 document.getElementById('credModalBg').addEventListener('click', e => { if (e.target.id === 'credModalBg') closeCred(); });
 document.getElementById('vendaModalBg').addEventListener('click', e => { if (e.target.id === 'vendaModalBg') closeVenda(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); } });
+document.getElementById('eventoModalBg').addEventListener('click', e => { if (e.target.id === 'eventoModalBg') closeEventoModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); closeEventoModal(); } });
 
 // ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────────
 
@@ -1467,6 +1580,7 @@ async function startApp() {
   applyRoleUI();
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'flex';
+  if (userRole === 'admin') { await fetchEventos(); renderEventoSelector(); }
   await fetchClients();
   setupRealtime();
   document.getElementById('loadingOverlay').style.display = 'none';
