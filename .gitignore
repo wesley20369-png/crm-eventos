@@ -1,8 +1,10 @@
 # Dados pessoais dos clientes — NUNCA subir para repositório público
 crm-eventos.html
-clientes-para-carga-inicial.csv
-clientes-para-carga-inicial.xlsx
 briefing-crm-nuvem.md
+# Qualquer planilha/exportação com dados de clientes
+*.csv
+*.xlsx
+*.xls
 
 # Configuração local do Claude Code
 .claude/
