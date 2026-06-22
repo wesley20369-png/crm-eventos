@@ -187,6 +187,7 @@
   .evbar #evStarBtn.on { background: var(--brand); color: #06281f; border-color: var(--brand); }
   /* Acesso por papel */
   .role-mentor .admin-only { display: none !important; }
+  .role-cliente .admin-only { display: none !important; }
   .mentor-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
   @media (max-width: 760px) { .mentor-wrap { grid-template-columns: 1fr; } }
   .mentor-form, .mentor-list { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
@@ -454,8 +455,8 @@ async function fetchEventos() {
 
 async function fetchClients() {
   let q = db.from('clientes').select('*').order('atualizado_em', { ascending: true });
-  // Admin vê os clientes do evento selecionado; mentor é filtrado pelo RLS (próprias indicações)
-  if (userRole === 'admin' && currentEvento) q = q.eq('evento_id', currentEvento);
+  // Admin/cliente veem os clientes do evento selecionado; mentor é filtrado pelo RLS (próprias indicações)
+  if ((userRole === 'admin' || userRole === 'cliente') && currentEvento) q = q.eq('evento_id', currentEvento);
   const { data, error } = await q;
   if (error) {
     console.error('Erro ao carregar clientes:', error);
@@ -1510,6 +1511,8 @@ async function importXlsx(ev) {
           else if (sheetGuess.includes('novo')) list = 'novos';
           else if (sheetGuess.includes('antig')||sheetGuess.includes('show')) list = 'antigos';
           else list = guessListFromRow(prod, noshow);
+          // Garante que a lista exista nas listas do evento atual (eventos com listas próprias)
+          if (!currentLists().some(l => l.id === list)) list = (currentLists()[0] || { id: 'upsell' }).id;
           imported.push({
             name:   String(name).trim(),
             phone:  String(get(['telefone','phone','tel','whats','celular','fone'])||'').trim(),
@@ -1608,19 +1611,25 @@ async function startApp() {
   if (appStarted) return;
   appStarted = true;
   const { data: { session } } = await db.auth.getSession();
-  userRole = (session && session.user && session.user.app_metadata && session.user.app_metadata.role) || 'admin';
+  const meta = (session && session.user && session.user.app_metadata) || {};
+  userRole = meta.role || 'admin';
+  // Cliente externo: fica preso ao evento dele
+  if (userRole === 'cliente' && meta.evento_id) {
+    currentEvento = meta.evento_id;
+    localStorage.setItem('crm_evento_atual', currentEvento);
+  }
   applyRoleUI();
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'flex';
-  if (userRole === 'admin') { await fetchEventos(); renderEventoSelector(); }
+  if (userRole === 'admin' || userRole === 'cliente') { await fetchEventos(); renderEventoSelector(); }
   await fetchClients();
   setupRealtime();
   document.getElementById('loadingOverlay').style.display = 'none';
 }
 
 function applyRoleUI() {
-  if (userRole === 'mentor') document.body.classList.add('role-mentor');
-  else document.body.classList.remove('role-mentor');
+  document.body.classList.toggle('role-mentor', userRole === 'mentor');
+  document.body.classList.toggle('role-cliente', userRole === 'cliente');
 }
 
 function showLogin() {
