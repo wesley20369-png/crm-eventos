@@ -350,13 +350,19 @@ const STATUSES = [
   { id: 'proxima',       label: 'Vai pra próxima',  color: '#fb923c' },
   { id: 'nao_vai',       label: 'Não vai',          color: '#f87171' },
 ];
-const LISTS = [
+const DEFAULT_LISTS = [
   { id: 'upsell',     label: 'Upsell (só ingresso)' },
   { id: 'novos',      label: 'Novos clientes' },
   { id: 'antigos',    label: 'Antigos / no-show' },
   { id: 'participar', label: 'Irão participar' },
   { id: 'cases',      label: 'Cases' },
 ];
+// Listas do evento atual: usa as listas próprias do evento (se houver) ou as padrão
+function currentLists() {
+  const ev = (typeof eventos !== 'undefined') ? eventos.find(e => e.id === currentEvento) : null;
+  if (ev && Array.isArray(ev.listas) && ev.listas.length) return ev.listas;
+  return DEFAULT_LISTS;
+}
 const PARTICIPAR_LIST = 'participar';
 const MAX_TRIES = 5;
 
@@ -533,6 +539,10 @@ function setSyncing(val) {
 
 function render() {
   if (userRole === 'mentor') { renderMentorApp(); return; }
+  // Se a aba ativa não existe nas listas do evento atual, volta pra primeira válida
+  if (activeList !== 'dashboard' && activeList !== 'credenciamento' && !currentLists().some(l => l.id === activeList)) {
+    activeList = currentLists()[0] ? currentLists()[0].id : 'dashboard';
+  }
   renderTabs();
   if (activeList === 'dashboard') {
     document.getElementById('stats').style.display = 'none';
@@ -549,7 +559,7 @@ function render() {
 
 function renderTabs() {
   let tabs = `<div class="tab ${activeList==='dashboard'?'active':''}" onclick="setList('dashboard')">📊 Visão geral</div>`;
-  tabs += LISTS.map(l => {
+  tabs += currentLists().map(l => {
     const n = clients.filter(c => c.list === l.id).length;
     return `<div class="tab ${l.id===activeList?'active':''}" onclick="setList('${l.id}')">${l.label}<span class="count">${n}</span></div>`;
   }).join('');
@@ -785,7 +795,7 @@ function fillModal(c) {
   document.getElementById('mName').value   = c.name  || '';
   document.getElementById('mPhone').value  = c.phone || '';
   document.getElementById('mProd').value   = c.prod  || '';
-  document.getElementById('mList').innerHTML   = LISTS.map(l   => `<option value="${l.id}"   ${l.id===c.list?'selected':''}>${l.label}</option>`).join('');
+  document.getElementById('mList').innerHTML   = currentLists().map(l   => `<option value="${l.id}"   ${l.id===c.list?'selected':''}>${l.label}</option>`).join('');
   document.getElementById('mStatus').innerHTML = STATUSES.map(s => `<option value="${s.id}" ${s.id===c.status?'selected':''}>${s.label}</option>`).join('');
   document.getElementById('mTries').value  = c.tries || 0;
   document.getElementById('mNote').value   = c.note  || '';
@@ -855,7 +865,7 @@ function renderDashboard() {
   const pctGeral  = g.total ? Math.round((g.conf / g.total) * 100) : 0;
   const alerts    = clients.filter(c => c.tries >= MAX_TRIES && c.status !== 'confirmou' && c.status !== 'nao_vai').length;
   const ls = {};
-  LISTS.forEach(l => ls[l.id] = listStats(l.id));
+  currentLists().forEach(l => ls[l.id] = listStats(l.id));
 
   const board = document.getElementById('board');
   board.style.display = 'block';
@@ -881,7 +891,7 @@ function renderDashboard() {
     <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
       <div style="font-size:13px;font-weight:700;margin-bottom:16px;color:var(--ink)">Detalhe por lista</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
-        ${LISTS.map(l => listCard(l, ls[l.id])).join('')}
+        ${currentLists().map(l => listCard(l, ls[l.id])).join('')}
       </div>
     </div>`;
   drawCharts(g, ls);
@@ -934,10 +944,10 @@ function drawCharts(g, ls) {
     charts.push(new Chart(bar, {
       type: 'bar',
       data: {
-        labels: LISTS.map(l => l.label.split(' ')[0]),
+        labels: currentLists().map(l => l.label.split(' ')[0]),
         datasets: [
-          { label:'Confirmados', data: LISTS.map(l => ls[l.id].conf), backgroundColor:'#34d399', borderRadius:6 },
-          { label:'Total',       data: LISTS.map(l => ls[l.id].total), backgroundColor:'#344150', borderRadius:6 }
+          { label:'Confirmados', data: currentLists().map(l => ls[l.id].conf), backgroundColor:'#34d399', borderRadius:6 },
+          { label:'Total',       data: currentLists().map(l => ls[l.id].total), backgroundColor:'#344150', borderRadius:6 }
         ]
       },
       options: { responsive:true, maintainAspectRatio:false,
@@ -1442,7 +1452,7 @@ function exportCredenciamento() {
 
 function exportXlsx() {
   const wb = XLSX.utils.book_new();
-  LISTS.forEach(l => {
+  currentLists().forEach(l => {
     const rows = clients.filter(c => c.list === l.id).map(c => ({
       NOME: c.name, TELEFONE: c.phone, PRODUTO: c.prod||'',
       STATUS: (STATUSES.find(s => s.id === c.status)||STATUSES[0]).label,

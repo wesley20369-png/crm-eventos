@@ -5,6 +5,7 @@ briefing-crm-nuvem.md
 *.csv
 *.xlsx
 *.xls
+*.sql
 
 # Configuração local do Claude Code
 .claude/
