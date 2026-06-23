@@ -343,7 +343,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const STATUSES = [
+const DEFAULT_STATUSES = [
   { id: 'em_aberto',     label: 'Em aberto',        color: '#94a3b8' },
   { id: 'em_contato',    label: 'Em contato',      color: '#60a5fa' },
   { id: 'nao_respondeu', label: 'Não respondeu',    color: '#fbbf24' },
@@ -351,6 +351,12 @@ const STATUSES = [
   { id: 'proxima',       label: 'Vai pra próxima',  color: '#fb923c' },
   { id: 'nao_vai',       label: 'Não vai',          color: '#f87171' },
 ];
+// Colunas de status do evento atual: usa as próprias do evento (se houver) ou as padrão
+function currentStatuses() {
+  const ev = (typeof eventos !== 'undefined') ? eventos.find(e => e.id === currentEvento) : null;
+  if (ev && Array.isArray(ev.status_cols) && ev.status_cols.length) return ev.status_cols;
+  return DEFAULT_STATUSES;
+}
 const DEFAULT_LISTS = [
   { id: 'upsell',     label: 'Upsell (só ingresso)' },
   { id: 'novos',      label: 'Novos clientes' },
@@ -711,7 +717,7 @@ function renderBoard() {
   const boardEl = document.getElementById('board');
   boardEl.style.display = 'grid';
   destroyCharts();
-  boardEl.innerHTML = STATUSES.map(s => {
+  boardEl.innerHTML = currentStatuses().map(s => {
     const cards = clients.filter(c => c.list === activeList && c.status === s.id);
     const html  = cards.length ? cards.map(c => cardHtml(c, s.color)).join('') : '<div class="empty-hint">—</div>';
     return `<div class="col" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${s.id}')">
@@ -797,7 +803,7 @@ function fillModal(c) {
   document.getElementById('mPhone').value  = c.phone || '';
   document.getElementById('mProd').value   = c.prod  || '';
   document.getElementById('mList').innerHTML   = currentLists().map(l   => `<option value="${l.id}"   ${l.id===c.list?'selected':''}>${l.label}</option>`).join('');
-  document.getElementById('mStatus').innerHTML = STATUSES.map(s => `<option value="${s.id}" ${s.id===c.status?'selected':''}>${s.label}</option>`).join('');
+  document.getElementById('mStatus').innerHTML = currentStatuses().map(s => `<option value="${s.id}" ${s.id===c.status?'selected':''}>${s.label}</option>`).join('');
   document.getElementById('mTries').value  = c.tries || 0;
   document.getElementById('mNote').value   = c.note  || '';
 }
@@ -841,7 +847,7 @@ function listStats(listId) {
   const inList = clients.filter(c => c.list === listId);
   const total  = inList.length;
   const by     = {};
-  STATUSES.forEach(s => by[s.id] = inList.filter(c => c.status === s.id).length);
+  currentStatuses().forEach(s => by[s.id] = inList.filter(c => c.status === s.id).length);
   const conf   = by['confirmou'];
   const nao    = by['nao_vai'];
   const pct    = total ? Math.round((conf / total) * 100) : 0;
@@ -907,7 +913,7 @@ function bigStat(label, val, color) {
 }
 
 function listCard(l, s) {
-  const bar = STATUSES.map(st => {
+  const bar = currentStatuses().map(st => {
     const w = s.total ? (s.by[st.id] / s.total * 100) : 0;
     return w > 0 ? `<div style="width:${w}%;background:${st.color}" title="${st.label}: ${s.by[st.id]}"></div>` : '';
   }).join('');
@@ -928,13 +934,13 @@ function drawCharts(g, ls) {
   Chart.defaults.font.family = '-apple-system, sans-serif';
   const pie = document.getElementById('pieChart');
   if (pie) {
-    const pieCounts = STATUSES.map(s => clients.filter(c => c.status === s.id).length);
+    const pieCounts = currentStatuses().map(s => clients.filter(c => c.status === s.id).length);
     charts.push(new Chart(pie, {
       type: 'doughnut',
       data: {
-        labels: STATUSES.map(s => s.label),
+        labels: currentStatuses().map(s => s.label),
         datasets: [{ data: pieCounts,
-          backgroundColor: STATUSES.map(s => s.color),
+          backgroundColor: currentStatuses().map(s => s.color),
           borderColor: '#1c2530', borderWidth: 2 }]
       },
       options: { responsive:true, maintainAspectRatio:false,
@@ -1457,7 +1463,7 @@ function exportXlsx() {
   currentLists().forEach(l => {
     const rows = clients.filter(c => c.list === l.id).map(c => ({
       NOME: c.name, TELEFONE: c.phone, PRODUTO: c.prod||'',
-      STATUS: (STATUSES.find(s => s.id === c.status)||STATUSES[0]).label,
+      STATUS: (currentStatuses().find(s => s.id === c.status)||currentStatuses()[0]).label,
       TENTATIVAS: c.tries||0, OBSERVACAO: c.note||''
     }));
     const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{NOME:'',TELEFONE:'',PRODUTO:'',STATUS:'',TENTATIVAS:'',OBSERVACAO:''}]);
