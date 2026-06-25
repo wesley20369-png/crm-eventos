@@ -992,6 +992,17 @@ const CRED_GROUPS = [
 ];
 const CRED_FIELDS = CRED_GROUPS.reduce((a, g) => a.concat(g.fields), []);
 
+// Nome em formato bonito: 1ª letra de cada palavra maiúscula, resto minúsculo
+// (mantém conectores como "de/da/dos" em minúsculo)
+function titleCase(s) {
+  const small = new Set(['de','da','do','das','dos','e','di','du','del','la']);
+  return String(s || '').toLowerCase().split(/\s+/).map((w, i) => {
+    if (!w) return w;
+    if (i > 0 && small.has(w)) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(' ');
+}
+
 function credConfirmed() { return clients.filter(c => c.status === 'confirmou'); }
 
 function isCredComplete(c) {
@@ -1045,7 +1056,7 @@ function credFichasHtml(confirmed) {
       <div class="fc-top">
         <div class="fc-avatar">${esc(ini)}</div>
         <div class="fc-id">
-          <div class="fc-name">${esc(c.name)}</div>
+          <div class="fc-name">${esc(titleCase(c.name))}</div>
           <div class="fc-plano">${c.plano?esc(c.plano):'sem plano definido'}</div>
         </div>
         <span class="fc-badge ${ok?'ok':'pend'}" title="${ok?'dados completos':'faltam dados'}">${ok?'✓':'!'}</span>
