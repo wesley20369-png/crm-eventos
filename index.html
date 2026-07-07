@@ -415,6 +415,7 @@ function fromDb(row) {
     horarioChegada: row.horario_chegada         || null,
     valorVenda:     Number(row.valor_venda)     || 0,
     fechouEvento:   !!row.fechou_evento,
+    camiseta:       row.camiseta                 || '',
   };
 }
 
@@ -429,6 +430,7 @@ const FIELD_MAP = {
   grupoOficial: 'grupo_oficial', confirmacao: 'confirmacao',
   presente: 'presente', horarioChegada: 'horario_chegada',
   valorVenda: 'valor_venda', fechouEvento: 'fechou_evento',
+  camiseta: 'camiseta',
 };
 
 // Mapeia objeto do app para linha do banco
@@ -974,6 +976,7 @@ const CRED_GROUPS = [
     { key:'phone',     label:'Telefone',      type:'text' },
     { key:'email',     label:'E-mail',        type:'text', wide:true },
     { key:'instagram', label:'Instagram (@)', type:'text' },
+    { key:'camiseta',  label:'Camiseta',      type:'text' },
   ]},
   { title: 'Comercial', fields: [
     { key:'potencial',      label:'Potencial de compra',       type:'text' },
@@ -1410,8 +1413,30 @@ function gerarRelatorio() {
   w.document.close();
 }
 
+// Detecta o evento Core Tênis (colunas próprias no export)
+function isTenisEvent() {
+  const ev = eventos.find(e => e.id === currentEvento);
+  return !!(ev && /t[eê]nis/i.test(ev.nome || ''));
+}
+
+// Linhas do export do Core Tênis (jogador/torcedor, camiseta, mentoria)
+function credRowsTenis() {
+  const labelLista = id => { const l = currentLists().find(x => x.id === id); return l ? l.label : id; };
+  return credConfirmed().map((c, i) => ({
+    'Nº': i + 1,
+    'Nome': c.name,
+    'Telefone': c.phone || '',
+    'E-mail': c.email || '',
+    'Mentoria': labelLista(c.list),
+    'Participa como': c.prod || '',
+    'Camiseta': c.camiseta || '',
+    'Presença': c.presente ? ('Sim' + (c.horarioChegada ? ' ' + new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '')) : 'Não',
+  }));
+}
+
 // Linhas no formato exato da planilha do Google (mesma ordem de colunas)
 function credRows() {
+  if (isTenisEvent()) return credRowsTenis();
   return credConfirmed().map((c, i) => ({
     'Nº': i + 1,
     'Nome': c.name,
