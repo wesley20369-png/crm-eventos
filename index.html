@@ -416,6 +416,7 @@ function fromDb(row) {
     valorVenda:     Number(row.valor_venda)     || 0,
     fechouEvento:   !!row.fechou_evento,
     camiseta:       row.camiseta                 || '',
+    cs:             row.cs                       || '',
   };
 }
 
@@ -430,7 +431,7 @@ const FIELD_MAP = {
   grupoOficial: 'grupo_oficial', confirmacao: 'confirmacao',
   presente: 'presente', horarioChegada: 'horario_chegada',
   valorVenda: 'valor_venda', fechouEvento: 'fechou_evento',
-  camiseta: 'camiseta',
+  camiseta: 'camiseta', cs: 'cs',
 };
 
 // Mapeia objeto do app para linha do banco
@@ -985,6 +986,7 @@ const CRED_GROUPS = [
     { key:'origem',         label:'Origem',                    type:'text' },
     { key:'mentor',         label:'Mentor',                    type:'text' },
     { key:'vendedor',       label:'Vendedor',                  type:'text' },
+    { key:'cs',             label:'CS',                        type:'text' },
     { key:'faturamento',    label:'Faturamento',               type:'text' },
     { key:'formaPagamento', label:'Forma de Pagamento',        type:'text' },
   ]},
@@ -1456,6 +1458,7 @@ function credRows() {
     'Grupo Oficial': c.grupoOficial ? 'Sim' : 'Não',
     'Confirmação': c.confirmacao ? 'Sim' : 'Não',
     'Presença': c.presente ? ('Sim' + (c.horarioChegada ? ' ' + new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '')) : 'Não',
+    'CS': c.cs || '',
   }));
 }
 
