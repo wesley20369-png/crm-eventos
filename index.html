@@ -196,6 +196,7 @@
   .nps-info { min-width: 0; }
   .nps-name { font-size: 14px; font-weight: 700; }
   .nps-obs { font-size: 11.5px; color: var(--ink-dim); margin-top: 2px; }
+  .nps-extra { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
   /* Rankings da pesquisa */
   .rk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 22px; }
   .rk-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
@@ -1130,6 +1131,7 @@ function renderNps() {
       ${evStat('NPS', nps, corNps)}
       ${evStat('Nota média', media, 'var(--blue)')}
       ${evStat('Responderam', confirmed.length + ' de ' + base.length, 'var(--ink)')}
+      ${evStat('Deram nota (clientes)', resp.length, 'var(--ink)')}
       ${evStat('Promotores (9-10)', promo, 'var(--brand)')}
       ${evStat('Neutros (7-8)', neutro, 'var(--amber)')}
       ${evStat('Detratores (0-6)', detr, 'var(--red)')}
@@ -1154,11 +1156,24 @@ function npsRowsHtml(confirmed) {
     const safeId = esc(c.id);
     const cls = npsClasse(c[f]);
     const nota = hasNota(c[f]) ? Number(c[f]) : '–';
+    const d = npsDados(c);
+    let sub;
+    if (hasNota(c[f])) {
+      sub = c[fo] ? esc(c[fo]) : npsRotulo(c[f]);
+    } else if (String(d.e_cliente || '').trim().toLowerCase().charAt(0) === 'n') {
+      sub = 'Não é cliente da Core — o formulário não pede nota';
+    } else if (Object.keys(d).length) {
+      sub = 'Respondeu o formulário, mas sem nota';
+    } else {
+      sub = 'Sem resposta';
+    }
+    const extra = [d.faturamento, d.gargalo].filter(Boolean).join(' · ');
     return `<div class="nps-row" onclick="openNps('${safeId}')">
       <span class="nps-nota ${cls}">${nota}</span>
       <div class="nps-info">
         <div class="nps-name">${esc(titleCase(c.name))}</div>
-        <div class="nps-obs">${c[fo] ? esc(c[fo]) : npsRotulo(c[f])}</div>
+        <div class="nps-obs">${sub}</div>
+        ${extra ? `<div class="nps-extra">${esc(extra)}</div>` : ''}
       </div>
     </div>`;
   }).join('');
