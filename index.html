@@ -1093,11 +1093,18 @@ function npsRotulo(v) {
   return c === 'promo' ? 'Promotor' : c === 'neutro' ? 'Neutro' : c === 'detrator' ? 'Detrator' : 'Sem resposta';
 }
 
+// Respondeu se tem nota OU alguma resposta do formulário
+function npsRespondeu(c) {
+  const d = npsDados(c);
+  return hasNota(c[npsField()]) || (d && Object.keys(d).length > 0);
+}
+
 function renderNps() {
   destroyCharts();
   const board = document.getElementById('board');
   board.style.display = 'block';
-  const confirmed = credConfirmed();
+  const base = clients;                       // todos do evento selecionado
+  const confirmed = base.filter(npsRespondeu); // quem respondeu o formulário
   const f = npsField();
   const resp = confirmed.filter(c => hasNota(c[f]));
   const promo = resp.filter(c => Number(c[f]) >= 9).length;
@@ -1122,7 +1129,7 @@ function renderNps() {
     <div class="ev-stats">
       ${evStat('NPS', nps, corNps)}
       ${evStat('Nota média', media, 'var(--blue)')}
-      ${evStat('Responderam', resp.length + ' de ' + confirmed.length, 'var(--ink)')}
+      ${evStat('Responderam', confirmed.length + ' de ' + base.length, 'var(--ink)')}
       ${evStat('Promotores (9-10)', promo, 'var(--brand)')}
       ${evStat('Neutros (7-8)', neutro, 'var(--amber)')}
       ${evStat('Detratores (0-6)', detr, 'var(--red)')}
@@ -1195,7 +1202,7 @@ async function saveNps() {
 
 function copiarNps() {
   const f = npsField(), fo = npsObsField();
-  const rows = credConfirmed().map((c, i) => ({
+  const rows = clients.filter(npsRespondeu).map((c, i) => ({
     'Nº': i + 1, 'Nome': c.name, 'Telefone': c.phone || '',
     'Nota': hasNota(c[f]) ? Number(c[f]) : '',
     'Classificação': hasNota(c[f]) ? npsRotulo(c[f]) : '',
@@ -1416,7 +1423,7 @@ function onCredSearch(val) {
   credSearch = val;
   const el = document.getElementById('credEventoList');
   if (!el) return;
-  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed()); return; }
+  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(clients.filter(npsRespondeu)); return; }
   el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
