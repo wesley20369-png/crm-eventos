@@ -185,6 +185,17 @@
   .evbar select { font-family: inherit; font-size: 13px; font-weight: 600; padding: 8px 12px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--surface); color: var(--ink); min-width: 220px; cursor: pointer; }
   .evbar select:focus { outline: none; border-color: var(--brand); }
   .evbar #evStarBtn.on { background: var(--brand); color: #06281f; border-color: var(--brand); }
+  /* NPS */
+  .nps-row { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; }
+  .nps-row:hover { border-color: var(--brand); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+  .nps-nota { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; flex-shrink: 0; }
+  .nps-nota.promo { background: rgba(52,211,153,0.15); color: var(--brand); }
+  .nps-nota.neutro { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .nps-nota.detrator { background: rgba(248,113,113,0.15); color: var(--red); }
+  .nps-nota.na { background: var(--bg2); color: var(--ink-dim); }
+  .nps-info { min-width: 0; }
+  .nps-name { font-size: 14px; font-weight: 700; }
+  .nps-obs { font-size: 11.5px; color: var(--ink-dim); margin-top: 2px; }
   /* Acesso por papel */
   .role-mentor .admin-only { display: none !important; }
   .role-cliente .admin-only { display: none !important; }
@@ -309,6 +320,20 @@
   </div>
 </div>
 
+<div class="modal-bg" id="npsModalBg">
+  <div class="modal" style="max-width:400px">
+    <h3 id="npsTitle">NPS</h3>
+    <label>Nota (0 a 10) — deixe vazio se ainda não respondeu</label>
+    <input id="np_nota" type="number" min="0" max="10" placeholder="0 a 10">
+    <label>Comentário / observação</label>
+    <textarea id="np_obs" rows="3" placeholder="O que a pessoa respondeu"></textarea>
+    <div class="modal-actions">
+      <button onclick="closeNps()">Cancelar</button>
+      <button class="primary" onclick="saveNps()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="vendaModalBg">
   <div class="modal" style="max-width:360px">
     <h3 id="vendaTitle">Registrar venda</h3>
@@ -383,6 +408,8 @@ let credSearch = '';          // texto de busca no modo evento
 let credEditingId = null;     // ficha aberta no formulário de credenciamento
 let vendaEditingId = null;    // venda aberta no modal de vendas
 let userRole = 'admin';       // 'admin' ou 'mentor' (vem do login)
+let npsMode = 'pre';          // 'pre' (pré-evento) ou 'pos' (pós-evento)
+let npsEditingId = null;      // pessoa aberta no modal de NPS
 let eventos = [];             // lista de eventos
 let currentEvento = localStorage.getItem('crm_evento_atual') || null; // evento selecionado
 
@@ -417,6 +444,10 @@ function fromDb(row) {
     fechouEvento:   !!row.fechou_evento,
     camiseta:       row.camiseta                 || '',
     cs:             row.cs                       || '',
+    npsPre:         (row.nps_pre === null || row.nps_pre === undefined) ? null : Number(row.nps_pre),
+    npsPreObs:      row.nps_pre_obs              || '',
+    npsPos:         (row.nps_pos === null || row.nps_pos === undefined) ? null : Number(row.nps_pos),
+    npsPosObs:      row.nps_pos_obs              || '',
   };
 }
 
@@ -432,6 +463,8 @@ const FIELD_MAP = {
   presente: 'presente', horarioChegada: 'horario_chegada',
   valorVenda: 'valor_venda', fechouEvento: 'fechou_evento',
   camiseta: 'camiseta', cs: 'cs',
+  npsPre: 'nps_pre', npsPreObs: 'nps_pre_obs',
+  npsPos: 'nps_pos', npsPosObs: 'nps_pos_obs',
 };
 
 // Mapeia objeto do app para linha do banco
@@ -550,7 +583,7 @@ function setSyncing(val) {
 function render() {
   if (userRole === 'mentor') { renderMentorApp(); return; }
   // Se a aba ativa não existe nas listas do evento atual, volta pra primeira válida
-  if (activeList !== 'dashboard' && activeList !== 'credenciamento' && !currentLists().some(l => l.id === activeList)) {
+  if (activeList !== 'dashboard' && activeList !== 'credenciamento' && activeList !== 'nps' && !currentLists().some(l => l.id === activeList)) {
     activeList = currentLists()[0] ? currentLists()[0].id : 'dashboard';
   }
   renderTabs();
@@ -560,6 +593,9 @@ function render() {
   } else if (activeList === 'credenciamento') {
     document.getElementById('stats').style.display = 'none';
     renderCredenciamento();
+  } else if (activeList === 'nps') {
+    document.getElementById('stats').style.display = 'none';
+    renderNps();
   } else {
     document.getElementById('stats').style.display = 'flex';
     renderStats();
@@ -575,6 +611,7 @@ function renderTabs() {
   }).join('');
   const nConf = clients.filter(c => c.status === 'confirmou').length;
   tabs += `<div class="tab ${activeList==='credenciamento'?'active':''}" onclick="setList('credenciamento')">🎫 Credenciamento<span class="count">${nConf}</span></div>`;
+  tabs += `<div class="tab ${activeList==='nps'?'active':''}" onclick="setList('nps')">📈 NPS</div>`;
   document.getElementById('tabs').innerHTML = tabs;
 }
 
@@ -968,6 +1005,131 @@ function drawCharts(g, ls) {
   }
 }
 
+// ─── NPS ──────────────────────────────────────────────────────────────────────
+
+function setNpsMode(m) { npsMode = m; credSearch = ''; render(); }
+function npsField()    { return npsMode === 'pre' ? 'npsPre' : 'npsPos'; }
+function npsObsField() { return npsMode === 'pre' ? 'npsPreObs' : 'npsPosObs'; }
+function hasNota(v)    { return v !== null && v !== undefined && v !== ''; }
+function npsClasse(v) {
+  if (!hasNota(v)) return 'na';
+  const n = Number(v);
+  if (n >= 9) return 'promo';
+  if (n >= 7) return 'neutro';
+  return 'detrator';
+}
+function npsRotulo(v) {
+  const c = npsClasse(v);
+  return c === 'promo' ? 'Promotor' : c === 'neutro' ? 'Neutro' : c === 'detrator' ? 'Detrator' : 'Sem resposta';
+}
+
+function renderNps() {
+  destroyCharts();
+  const board = document.getElementById('board');
+  board.style.display = 'block';
+  const confirmed = credConfirmed();
+  const f = npsField();
+  const resp = confirmed.filter(c => hasNota(c[f]));
+  const promo = resp.filter(c => Number(c[f]) >= 9).length;
+  const neutro = resp.filter(c => Number(c[f]) >= 7 && Number(c[f]) < 9).length;
+  const detr = resp.filter(c => Number(c[f]) < 7).length;
+  const nps = resp.length ? Math.round(((promo - detr) / resp.length) * 100) : 0;
+  const media = resp.length ? (resp.reduce((s, c) => s + Number(c[f]), 0) / resp.length).toFixed(1) : '—';
+  const corNps = nps >= 50 ? 'var(--brand)' : nps >= 0 ? 'var(--amber)' : 'var(--red)';
+  const titulo = npsMode === 'pre' ? 'Satisfação com o ecossistema (antes do evento)' : 'Satisfação com o ecossistema e o evento (depois)';
+
+  board.innerHTML = `
+    <div class="cred-toolbar">
+      <div class="seg-group">
+        <button class="seg ${npsMode==='pre'?'on':''}" onclick="setNpsMode('pre')">📝 Pré-evento</button>
+        <button class="seg ${npsMode==='pos'?'on':''}" onclick="setNpsMode('pos')">🎉 Pós-evento</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+        <button onclick="copiarNps()">📊 Copiar p/ Sheets</button>
+      </div>
+    </div>
+    <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px">${titulo}</div>
+    <div class="ev-stats">
+      ${evStat('NPS', nps, corNps)}
+      ${evStat('Nota média', media, 'var(--blue)')}
+      ${evStat('Responderam', resp.length + ' de ' + confirmed.length, 'var(--ink)')}
+      ${evStat('Promotores (9-10)', promo, 'var(--brand)')}
+      ${evStat('Neutros (7-8)', neutro, 'var(--amber)')}
+      ${evStat('Detratores (0-6)', detr, 'var(--red)')}
+    </div>
+    <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
+    <div id="credEventoList">${npsRowsHtml(confirmed)}</div>`;
+}
+
+function npsRowsHtml(confirmed) {
+  const f = npsField(), fo = npsObsField();
+  const q = norm(credSearch);
+  const list = confirmed.filter(c => !q || norm(c.name).includes(q)).sort((a, b) => {
+    const ra = hasNota(a[f]), rb = hasNota(b[f]);
+    if (ra !== rb) return ra ? -1 : 1;              // quem respondeu primeiro
+    if (ra && rb) return Number(a[f]) - Number(b[f]); // menores notas no topo (atenção)
+    return norm(a.name).localeCompare(norm(b.name));
+  });
+  if (!list.length) return '<div class="empty-hint">Ninguém encontrado.</div>';
+  return list.map(c => {
+    const safeId = esc(c.id);
+    const cls = npsClasse(c[f]);
+    const nota = hasNota(c[f]) ? Number(c[f]) : '–';
+    return `<div class="nps-row" onclick="openNps('${safeId}')">
+      <span class="nps-nota ${cls}">${nota}</span>
+      <div class="nps-info">
+        <div class="nps-name">${esc(titleCase(c.name))}</div>
+        <div class="nps-obs">${c[fo] ? esc(c[fo]) : npsRotulo(c[f])}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openNps(id) {
+  npsEditingId = id;
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const f = npsField(), fo = npsObsField();
+  document.getElementById('npsTitle').textContent = (npsMode === 'pre' ? 'NPS pré-evento — ' : 'NPS pós-evento — ') + (c.name || '');
+  document.getElementById('np_nota').value = hasNota(c[f]) ? c[f] : '';
+  document.getElementById('np_obs').value = c[fo] || '';
+  document.getElementById('npsModalBg').classList.add('show');
+  setTimeout(() => { const el = document.getElementById('np_nota'); if (el) el.focus(); }, 80);
+}
+function closeNps() { document.getElementById('npsModalBg').classList.remove('show'); npsEditingId = null; }
+
+async function saveNps() {
+  if (!npsEditingId) return;
+  const raw = document.getElementById('np_nota').value.trim();
+  let nota = raw === '' ? null : Math.max(0, Math.min(10, parseInt(raw)));
+  if (raw !== '' && isNaN(nota)) { alert('Nota deve ser um número de 0 a 10 (ou deixe vazio).'); return; }
+  const obs = document.getElementById('np_obs').value.trim();
+  const id = npsEditingId;
+  closeNps();
+  const campos = {};
+  campos[npsField()] = nota;
+  campos[npsObsField()] = obs;
+  await updateClient(id, campos);
+}
+
+function copiarNps() {
+  const f = npsField(), fo = npsObsField();
+  const rows = credConfirmed().map((c, i) => ({
+    'Nº': i + 1, 'Nome': c.name, 'Telefone': c.phone || '',
+    'Nota': hasNota(c[f]) ? Number(c[f]) : '',
+    'Classificação': hasNota(c[f]) ? npsRotulo(c[f]) : '',
+    'Comentário': c[fo] || '',
+  }));
+  if (!rows.length) { alert('Não há confirmados.'); return; }
+  const headers = Object.keys(rows[0]);
+  const limpa = v => String(v == null ? '' : v).replace(/[\t\n\r]/g, ' ');
+  const tsv = [headers.join('\t')].concat(rows.map(r => headers.map(h => limpa(r[h])).join('\t'))).join('\n');
+  const ok = () => alert('✓ Copiado! Cole na sua planilha (Ctrl+V).');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tsv).then(ok).catch(() => { fallbackCopy(tsv); ok(); });
+  } else { fallbackCopy(tsv); ok(); }
+}
+
 // ─── CREDENCIAMENTO ───────────────────────────────────────────────────────────
 
 const CRED_GROUPS = [
@@ -1173,6 +1335,7 @@ function onCredSearch(val) {
   credSearch = val;
   const el = document.getElementById('credEventoList');
   if (!el) return;
+  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed()); return; }
   el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
@@ -1647,7 +1810,8 @@ document.getElementById('modalBg').addEventListener('click', e => { if (e.target
 document.getElementById('credModalBg').addEventListener('click', e => { if (e.target.id === 'credModalBg') closeCred(); });
 document.getElementById('vendaModalBg').addEventListener('click', e => { if (e.target.id === 'vendaModalBg') closeVenda(); });
 document.getElementById('eventoModalBg').addEventListener('click', e => { if (e.target.id === 'eventoModalBg') closeEventoModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); closeEventoModal(); } });
+document.getElementById('npsModalBg').addEventListener('click', e => { if (e.target.id === 'npsModalBg') closeNps(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); closeEventoModal(); closeNps(); } });
 
 // ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────────
 
