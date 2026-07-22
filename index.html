@@ -196,6 +196,21 @@
   .nps-info { min-width: 0; }
   .nps-name { font-size: 14px; font-weight: 700; }
   .nps-obs { font-size: 11.5px; color: var(--ink-dim); margin-top: 2px; }
+  /* Rankings da pesquisa */
+  .rk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .rk-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .rk-title { font-size: 12.5px; font-weight: 700; margin-bottom: 12px; color: var(--ink); }
+  .rk-item { margin-bottom: 9px; }
+  .rk-top { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 4px; }
+  .rk-top b { color: var(--brand); white-space: nowrap; }
+  .rk-bar { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .rk-bar > div { height: 100%; background: var(--brand); border-radius: 4px; }
+  /* Respostas na ficha */
+  .np-resp-box { background: var(--bg2); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; margin-bottom: 4px; max-height: 260px; overflow: auto; }
+  .np-resp { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .np-resp:last-child { border-bottom: none; }
+  .np-resp span { font-size: 10.5px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .np-resp b { font-size: 13px; color: var(--ink); font-weight: 600; }
   /* Acesso por papel */
   .role-mentor .admin-only { display: none !important; }
   .role-cliente .admin-only { display: none !important; }
@@ -323,6 +338,7 @@
 <div class="modal-bg" id="npsModalBg">
   <div class="modal" style="max-width:400px">
     <h3 id="npsTitle">NPS</h3>
+    <div id="np_respostas"></div>
     <label>Nota (0 a 10) — deixe vazio se ainda não respondeu</label>
     <input id="np_nota" type="number" min="0" max="10" placeholder="0 a 10">
     <label>Comentário / observação</label>
@@ -448,6 +464,8 @@ function fromDb(row) {
     npsPreObs:      row.nps_pre_obs              || '',
     npsPos:         (row.nps_pos === null || row.nps_pos === undefined) ? null : Number(row.nps_pos),
     npsPosObs:      row.nps_pos_obs              || '',
+    npsPreDados:    row.nps_pre_dados            || {},
+    npsPosDados:    row.nps_pos_dados            || {},
   };
 }
 
@@ -465,6 +483,7 @@ const FIELD_MAP = {
   camiseta: 'camiseta', cs: 'cs',
   npsPre: 'nps_pre', npsPreObs: 'nps_pre_obs',
   npsPos: 'nps_pos', npsPosObs: 'nps_pos_obs',
+  npsPreDados: 'nps_pre_dados', npsPosDados: 'nps_pos_dados',
 };
 
 // Mapeia objeto do app para linha do banco
@@ -1007,6 +1026,57 @@ function drawCharts(g, ls) {
 
 // ─── NPS ──────────────────────────────────────────────────────────────────────
 
+// Perguntas de escolha única viram rankings; as longas aparecem na ficha da pessoa
+const NPS_CAMPOS = [
+  { key:'faturamento',     label:'💰 Faturamento mensal' },
+  { key:'equipe',          label:'👥 Tamanho da equipe' },
+  { key:'gargalo',         label:'🚧 Maior gargalo hoje' },
+  { key:'objetivo',        label:'🎯 Objetivo dos próximos 12 meses' },
+  { key:'area_ajuda',      label:'🆘 Área que mais precisa de ajuda' },
+  { key:'motivo_investir', label:'💡 Motivo para investir numa solução' },
+  { key:'motivacao',       label:'📣 Motivo para participar do evento' },
+  { key:'tempo_conteudo',  label:'⏱️ Tempo semanal com conteúdo' },
+  { key:'etapa_consome',   label:'🔧 Etapa que mais consome tempo' },
+  { key:'etapa_eliminar',  label:'✂️ Etapa que eliminaria' },
+  { key:'satisfacao',      label:'😀 Satisfação com a Core' },
+  { key:'e_cliente',       label:'🤝 Já é cliente' },
+  { key:'tempo_cliente',   label:'📆 Tempo como cliente' },
+  { key:'produto',         label:'📦 Produto que possui' },
+];
+const NPS_TEXTOS = [
+  { key:'expectativa',  label:'O que faria valer a pena' },
+  { key:'impedimento',  label:'O que mais o impede' },
+];
+
+function npsDados(c) {
+  const f = npsMode === 'pre' ? 'npsPreDados' : 'npsPosDados';
+  const d = c && c[f];
+  return (d && typeof d === 'object') ? d : {};
+}
+
+function npsRankingsHtml(confirmed) {
+  const cards = NPS_CAMPOS.map(campo => {
+    const counts = {};
+    confirmed.forEach(c => {
+      const v = String(npsDados(c)[campo.key] || '').trim();
+      if (v) counts[v] = (counts[v] || 0) + 1;
+    });
+    const total = Object.keys(counts).reduce((s, k) => s + counts[k], 0);
+    if (!total) return '';
+    const itens = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 8);
+    const bars = itens.map(k => {
+      const pct = Math.round(counts[k] / total * 100);
+      return `<div class="rk-item">
+        <div class="rk-top"><span>${esc(k)}</span><b>${counts[k]} · ${pct}%</b></div>
+        <div class="rk-bar"><div style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+    return `<div class="rk-card"><div class="rk-title">${campo.label}</div>${bars}</div>`;
+  }).filter(Boolean).join('');
+  if (!cards) return `<div class="empty-hint" style="margin:6px 0 20px">Ainda não há respostas do formulário importadas. Assim que você me mandar a planilha de respostas, os painéis aparecem aqui.</div>`;
+  return `<div class="rk-grid">${cards}</div>`;
+}
+
 function setNpsMode(m) { npsMode = m; credSearch = ''; render(); }
 function npsField()    { return npsMode === 'pre' ? 'npsPre' : 'npsPos'; }
 function npsObsField() { return npsMode === 'pre' ? 'npsPreObs' : 'npsPosObs'; }
@@ -1057,6 +1127,8 @@ function renderNps() {
       ${evStat('Neutros (7-8)', neutro, 'var(--amber)')}
       ${evStat('Detratores (0-6)', detr, 'var(--red)')}
     </div>
+    ${npsRankingsHtml(confirmed)}
+    <div class="ev-sec-title" style="margin-top:6px">👤 Respostas por pessoa</div>
     <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
     <div id="credEventoList">${npsRowsHtml(confirmed)}</div>`;
 }
@@ -1091,6 +1163,15 @@ function openNps(id) {
   if (!c) return;
   const f = npsField(), fo = npsObsField();
   document.getElementById('npsTitle').textContent = (npsMode === 'pre' ? 'NPS pré-evento — ' : 'NPS pós-evento — ') + (c.name || '');
+  // respostas do formulário (somente leitura)
+  const d = npsDados(c);
+  const linhas = NPS_CAMPOS.concat(NPS_TEXTOS)
+    .filter(q => String(d[q.key] || '').trim())
+    .map(q => `<div class="np-resp"><span>${q.label.replace(/^\S+\s/, '')}</span><b>${esc(d[q.key])}</b></div>`)
+    .join('');
+  document.getElementById('np_respostas').innerHTML = linhas
+    ? `<div class="np-resp-box">${linhas}</div>`
+    : '<div class="empty-hint" style="padding:8px">Sem respostas do formulário para esta pessoa.</div>';
   document.getElementById('np_nota').value = hasNota(c[f]) ? c[f] : '';
   document.getElementById('np_obs').value = c[fo] || '';
   document.getElementById('npsModalBg').classList.add('show');
