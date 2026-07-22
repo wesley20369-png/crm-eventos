@@ -1104,8 +1104,8 @@ function renderNps() {
   destroyCharts();
   const board = document.getElementById('board');
   board.style.display = 'block';
-  const base = clients;                       // todos do evento selecionado
-  const confirmed = base.filter(npsRespondeu); // quem respondeu o formulário
+  const base = credConfirmed();                // confirmados do evento
+  const confirmed = base.filter(npsRespondeu); // confirmados que responderam
   const f = npsField();
   const resp = confirmed.filter(c => hasNota(c[f]));
   const promo = resp.filter(c => Number(c[f]) >= 9).length;
@@ -1217,7 +1217,7 @@ async function saveNps() {
 
 function copiarNps() {
   const f = npsField(), fo = npsObsField();
-  const rows = clients.filter(npsRespondeu).map((c, i) => ({
+  const rows = credConfirmed().filter(npsRespondeu).map((c, i) => ({
     'Nº': i + 1, 'Nome': c.name, 'Telefone': c.phone || '',
     'Nota': hasNota(c[f]) ? Number(c[f]) : '',
     'Classificação': hasNota(c[f]) ? npsRotulo(c[f]) : '',
@@ -1438,7 +1438,7 @@ function onCredSearch(val) {
   credSearch = val;
   const el = document.getElementById('credEventoList');
   if (!el) return;
-  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(clients.filter(npsRespondeu)); return; }
+  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed().filter(npsRespondeu)); return; }
   el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
