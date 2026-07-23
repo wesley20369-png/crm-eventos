@@ -149,6 +149,8 @@
   .chip { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--bg2); color: var(--ink-dim); border: 1px solid var(--line); }
   .chip.on { background: rgba(52,211,153,0.12); color: var(--brand); border-color: rgba(52,211,153,0.3); }
   .chip.nps.off { background: rgba(251,191,36,0.12); color: var(--amber); border-color: rgba(251,191,36,0.3); }
+  .fc-wa { display: inline-flex; align-items: center; gap: 5px; margin-top: 11px; font-size: 11.5px; font-weight: 700; color: var(--brand); background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); padding: 6px 12px; border-radius: 8px; text-decoration: none; transition: all 0.15s; }
+  .fc-wa:hover { background: var(--brand); color: #06281f; }
   /* Stats (evento/vendas) */
   .ev-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .ev-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 16px 18px; }
@@ -1366,6 +1368,7 @@ function credFichasHtml(confirmed) {
         <span class="chip ${c.phone?'on':''}">Tel</span>
         <span class="chip nps ${npsRespondeuFase(c,'pre')?'on':'off'}" title="Formulário de NPS pré-evento">${npsRespondeuFase(c,'pre')?'✓ NPS':'NPS pendente'}</span>
       </div>
+      ${c.phone ? `<a class="fc-wa" href="whatsapp://send?phone=${normalizePhone(c.phone)}" onclick="event.stopPropagation()" title="Falar no WhatsApp">💬 WhatsApp</a>` : ''}
     </div>`;
   }).join('');
   const nps = confirmed.filter(c => npsRespondeuFase(c, 'pre')).length;
@@ -1373,7 +1376,7 @@ function credFichasHtml(confirmed) {
     <div class="fc-head">
       <div><span class="fc-big">${completos}</span> <span class="fc-sub">de ${confirmed.length} fichas completas</span></div>
       <div class="fc-progress"><div style="width:${pct}%"></div></div>
-      <div class="fc-sub" style="white-space:nowrap">📈 NPS: <b style="color:var(--brand)">${nps}</b> responderam · <b style="color:var(--amber)">${confirmed.length - nps}</b> pendentes</div>
+      <div class="fc-sub" style="white-space:nowrap">📈 NPS respondido: <b style="color:var(--brand)">${nps}</b> de <b>${confirmed.length}</b></div>
     </div>
     <div class="fc-grid">${cards}</div>`;
 }
