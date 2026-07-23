@@ -197,6 +197,10 @@
   .nps-name { font-size: 14px; font-weight: 700; }
   .nps-obs { font-size: 11.5px; color: var(--ink-dim); margin-top: 2px; }
   .nps-extra { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+  .nps-name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .nps-tag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+  .nps-tag.prod { background: rgba(52,211,153,0.12); color: var(--brand); border: 1px solid rgba(52,211,153,0.3); }
+  .nps-tag.tempo { background: rgba(96,165,250,0.12); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
   /* Rankings da pesquisa */
   .rk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 22px; }
   .rk-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
@@ -1168,10 +1172,14 @@ function npsRowsHtml(confirmed) {
       sub = 'Sem resposta';
     }
     const extra = [d.faturamento, d.gargalo].filter(Boolean).join(' · ');
+    const prod = String(d.produto || c.plano || '').trim();
+    const tempo = String(d.tempo_cliente || '').trim();
+    const tags = (prod ? `<span class="nps-tag prod">${esc(prod)}</span>` : '')
+               + (tempo ? `<span class="nps-tag tempo">⏳ ${esc(tempo)}</span>` : '');
     return `<div class="nps-row" onclick="openNps('${safeId}')">
       <span class="nps-nota ${cls}">${nota}</span>
       <div class="nps-info">
-        <div class="nps-name">${esc(titleCase(c.name))}</div>
+        <div class="nps-name">${esc(titleCase(c.name))}${tags}</div>
         <div class="nps-obs">${sub}</div>
         ${extra ? `<div class="nps-extra">${esc(extra)}</div>` : ''}
       </div>
