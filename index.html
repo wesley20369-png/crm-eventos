@@ -201,6 +201,9 @@
   .nps-tag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
   .nps-tag.prod { background: rgba(52,211,153,0.12); color: var(--brand); border: 1px solid rgba(52,211,153,0.3); }
   .nps-tag.tempo { background: rgba(96,165,250,0.12); color: var(--blue); border: 1px solid rgba(96,165,250,0.3); }
+  .nps-tag.ok { background: rgba(52,211,153,0.15); color: var(--brand); }
+  .nps-tag.pend { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .nps-row.pendente { opacity: 0.72; border-style: dashed; }
   /* Rankings da pesquisa */
   .rk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 22px; }
   .rk-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
@@ -1141,18 +1144,20 @@ function renderNps() {
       ${evStat('Detratores (0-6)', detr, 'var(--red)')}
     </div>
     ${npsRankingsHtml(confirmed)}
-    <div class="ev-sec-title" style="margin-top:6px">👤 Respostas por pessoa</div>
+    <div class="ev-sec-title" style="margin-top:6px">👤 Confirmados <span class="ev-cnt">${confirmed.length} responderam · ${base.length - confirmed.length} pendentes</span></div>
     <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
-    <div id="credEventoList">${npsRowsHtml(confirmed)}</div>`;
+    <div id="credEventoList">${npsRowsHtml(base)}</div>`;
 }
 
 function npsRowsHtml(confirmed) {
   const f = npsField(), fo = npsObsField();
   const q = norm(credSearch);
+  // 0 = respondeu com nota · 1 = respondeu sem nota · 2 = ainda não respondeu
+  const rank = c => npsRespondeu(c) ? (hasNota(c[f]) ? 0 : 1) : 2;
   const list = confirmed.filter(c => !q || norm(c.name).includes(q)).sort((a, b) => {
-    const ra = hasNota(a[f]), rb = hasNota(b[f]);
-    if (ra !== rb) return ra ? -1 : 1;              // quem respondeu primeiro
-    if (ra && rb) return Number(a[f]) - Number(b[f]); // menores notas no topo (atenção)
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 0) return Number(a[f]) - Number(b[f]); // menores notas no topo (atenção)
     return norm(a.name).localeCompare(norm(b.name));
   });
   if (!list.length) return '<div class="empty-hint">Ninguém encontrado.</div>';
@@ -1162,7 +1167,9 @@ function npsRowsHtml(confirmed) {
     const nota = hasNota(c[f]) ? Number(c[f]) : '–';
     const d = npsDados(c);
     let sub;
-    if (hasNota(c[f])) {
+    if (!npsRespondeu(c)) {
+      sub = 'Ainda não respondeu o formulário';
+    } else if (hasNota(c[f])) {
       sub = c[fo] ? esc(c[fo]) : npsRotulo(c[f]);
     } else if (String(d.e_cliente || '').trim().toLowerCase().charAt(0) === 'n') {
       sub = 'Não é cliente da Core — o formulário não pede nota';
@@ -1174,9 +1181,14 @@ function npsRowsHtml(confirmed) {
     const extra = [d.faturamento, d.gargalo].filter(Boolean).join(' · ');
     const prod = String(d.produto || c.plano || '').trim();
     const tempo = String(d.tempo_cliente || '').trim();
-    const tags = (prod ? `<span class="nps-tag prod">${esc(prod)}</span>` : '')
+    const ok = npsRespondeu(c);
+    const selo = ok
+      ? '<span class="nps-tag ok">✓ respondeu</span>'
+      : '<span class="nps-tag pend">● pendente</span>';
+    const tags = selo
+               + (prod ? `<span class="nps-tag prod">${esc(prod)}</span>` : '')
                + (tempo ? `<span class="nps-tag tempo">⏳ ${esc(tempo)}</span>` : '');
-    return `<div class="nps-row" onclick="openNps('${safeId}')">
+    return `<div class="nps-row ${ok?'':'pendente'}" onclick="openNps('${safeId}')">
       <span class="nps-nota ${cls}">${nota}</span>
       <div class="nps-info">
         <div class="nps-name">${esc(titleCase(c.name))}${tags}</div>
@@ -1225,12 +1237,18 @@ async function saveNps() {
 
 function copiarNps() {
   const f = npsField(), fo = npsObsField();
-  const rows = credConfirmed().filter(npsRespondeu).map((c, i) => ({
-    'Nº': i + 1, 'Nome': c.name, 'Telefone': c.phone || '',
-    'Nota': hasNota(c[f]) ? Number(c[f]) : '',
-    'Classificação': hasNota(c[f]) ? npsRotulo(c[f]) : '',
-    'Comentário': c[fo] || '',
-  }));
+  const rows = credConfirmed().map((c, i) => {
+    const d = npsDados(c);
+    return {
+      'Nº': i + 1, 'Nome': c.name, 'Telefone': c.phone || '',
+      'Respondeu': npsRespondeu(c) ? 'Sim' : 'Não',
+      'Nota': hasNota(c[f]) ? Number(c[f]) : '',
+      'Classificação': hasNota(c[f]) ? npsRotulo(c[f]) : '',
+      'Produto': d.produto || c.plano || '',
+      'Tempo de casa': d.tempo_cliente || '',
+      'Comentário': c[fo] || '',
+    };
+  });
   if (!rows.length) { alert('Não há confirmados.'); return; }
   const headers = Object.keys(rows[0]);
   const limpa = v => String(v == null ? '' : v).replace(/[\t\n\r]/g, ' ');
@@ -1446,7 +1464,7 @@ function onCredSearch(val) {
   credSearch = val;
   const el = document.getElementById('credEventoList');
   if (!el) return;
-  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed().filter(npsRespondeu)); return; }
+  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed()); return; }
   el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
