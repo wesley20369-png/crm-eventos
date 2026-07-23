@@ -207,6 +207,19 @@
   .nps-tag.ok { background: rgba(52,211,153,0.15); color: var(--brand); }
   .nps-tag.pend { background: rgba(251,191,36,0.15); color: var(--amber); }
   .nps-row.pendente { opacity: 0.72; border-style: dashed; }
+  /* Detratores */
+  .det-box { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.35); border-radius: 14px; padding: 16px 18px; margin-bottom: 22px; }
+  .det-title { font-size: 14px; font-weight: 800; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .det-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+  .det-card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+  .det-card:hover { border-color: var(--red); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+  .det-top { display: flex; align-items: center; gap: 11px; }
+  .det-id { min-width: 0; }
+  .det-name { font-size: 14px; font-weight: 700; }
+  .det-meta { font-size: 11px; color: var(--ink-dim); }
+  .det-obs { font-size: 12.5px; color: var(--ink-soft); font-style: italic; margin-top: 10px; border-top: 1px dashed var(--line-soft); padding-top: 9px; }
+  .det-obs.vazio { font-style: normal; color: var(--ink-dim); }
+  .det-card .fc-wa { margin-top: 11px; }
   /* Rankings da pesquisa */
   .rk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin-bottom: 22px; }
   .rk-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
@@ -528,7 +541,7 @@ async function fetchEventos() {
 async function fetchClients() {
   let q = db.from('clientes').select('*').order('atualizado_em', { ascending: true });
   // Admin/cliente veem os clientes do evento selecionado; mentor é filtrado pelo RLS (próprias indicações)
-  if ((userRole === 'admin' || userRole === 'cliente') && currentEvento) q = q.eq('evento_id', currentEvento);
+  if ((userRole === 'admin' || userRole === 'cliente' || userRole === 'lider') && currentEvento) q = q.eq('evento_id', currentEvento);
   const { data, error } = await q;
   if (error) {
     console.error('Erro ao carregar clientes:', error);
@@ -612,6 +625,13 @@ function setSyncing(val) {
 
 function render() {
   if (userRole === 'mentor') { renderMentorApp(); return; }
+  if (userRole === 'lider') {
+    activeList = 'nps';
+    document.getElementById('stats').style.display = 'none';
+    document.getElementById('tabs').innerHTML = '<div class="tab active">📈 NPS</div>';
+    renderNps();
+    return;
+  }
   // Se a aba ativa não existe nas listas do evento atual, volta pra primeira válida
   if (activeList !== 'dashboard' && activeList !== 'credenciamento' && activeList !== 'nps' && !currentLists().some(l => l.id === activeList)) {
     activeList = currentLists()[0] ? currentLists()[0].id : 'dashboard';
@@ -1153,6 +1173,7 @@ function renderNps() {
       ${evStat('Neutros (7-8)', neutro, 'var(--amber)')}
       ${evStat('Detratores (0-6)', detr, 'var(--red)')}
     </div>
+    ${npsDetratoresHtml(base)}
     ${npsRankingsHtml(confirmed)}
     <div class="ev-sec-title" style="margin-top:6px">👤 Respostas por pessoa</div>
     <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
@@ -1193,6 +1214,7 @@ function npsRowsHtml(confirmed) {
     const tempo = String(d.tempo_cliente || '').trim();
     const tags = (prod ? `<span class="nps-tag prod">${esc(prod)}</span>` : '')
                + (tempo ? `<span class="nps-tag tempo">⏳ ${esc(tempo)}</span>` : '');
+    const wa = c.phone ? `<a class="fc-wa" href="whatsapp://send?phone=${normalizePhone(c.phone)}" onclick="event.stopPropagation()" title="Falar no WhatsApp">💬 WhatsApp</a>` : '';
     return `<div class="nps-row" onclick="openNps('${safeId}')">
       <span class="nps-nota ${cls}">${nota}</span>
       <div class="nps-info">
@@ -1200,8 +1222,37 @@ function npsRowsHtml(confirmed) {
         <div class="nps-obs">${sub}</div>
         ${extra ? `<div class="nps-extra">${esc(extra)}</div>` : ''}
       </div>
+      ${wa}
     </div>`;
   }).join('');
+}
+
+// Bloco de destaque dos detratores (nota 0-6)
+function npsDetratoresHtml(base) {
+  const f = npsField();
+  const det = base.filter(c => hasNota(c[f]) && Number(c[f]) < 7)
+                  .sort((a, b) => Number(a[f]) - Number(b[f]));
+  if (!det.length) return '';
+  const cards = det.map(c => {
+    const safeId = esc(c.id);
+    const d = npsDados(c);
+    const prod = String(d.produto || c.plano || '').trim();
+    const tempo = String(d.tempo_cliente || '').trim();
+    const wa = c.phone ? `<a class="fc-wa" href="whatsapp://send?phone=${normalizePhone(c.phone)}" onclick="event.stopPropagation()">💬 WhatsApp</a>` : '';
+    return `<div class="det-card" onclick="openNps('${safeId}')">
+      <div class="det-top">
+        <span class="nps-nota detrator">${Number(c[f])}</span>
+        <div class="det-id"><div class="det-name">${esc(titleCase(c.name))}</div>
+          <div class="det-meta">${[prod, tempo && ('⏳ '+tempo)].filter(Boolean).map(esc).join(' · ')}</div></div>
+      </div>
+      ${c[npsObsField()] ? `<div class="det-obs">"${esc(c[npsObsField()])}"</div>` : '<div class="det-obs vazio">Sem comentário</div>'}
+      ${wa}
+    </div>`;
+  }).join('');
+  return `<div class="det-box">
+    <div class="det-title">🔴 Detratores — precisam de atenção <span class="ev-cnt">${det.length}</span></div>
+    <div class="det-grid">${cards}</div>
+  </div>`;
 }
 
 function openNps(id) {
@@ -1960,15 +2011,16 @@ async function startApp() {
   const { data: { session } } = await db.auth.getSession();
   const meta = (session && session.user && session.user.app_metadata) || {};
   userRole = meta.role || 'admin';
-  // Cliente externo: fica preso ao evento dele
-  if (userRole === 'cliente' && meta.evento_id) {
+  // Cliente externo e líder ficam presos ao evento definido
+  if ((userRole === 'cliente' || userRole === 'lider') && meta.evento_id) {
     currentEvento = meta.evento_id;
     localStorage.setItem('crm_evento_atual', currentEvento);
   }
+  if (userRole === 'lider') activeList = 'nps';
   applyRoleUI();
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('loadingOverlay').style.display = 'flex';
-  if (userRole === 'admin' || userRole === 'cliente') { await fetchEventos(); renderEventoSelector(); }
+  if (userRole === 'admin' || userRole === 'cliente' || userRole === 'lider') { await fetchEventos(); renderEventoSelector(); }
   await fetchClients();
   setupRealtime();
   document.getElementById('loadingOverlay').style.display = 'none';
@@ -1977,6 +2029,7 @@ async function startApp() {
 function applyRoleUI() {
   document.body.classList.toggle('role-mentor', userRole === 'mentor');
   document.body.classList.toggle('role-cliente', userRole === 'cliente');
+  document.body.classList.toggle('role-lider', userRole === 'lider');
 }
 
 function showLogin() {
