@@ -207,6 +207,11 @@
   .nps-tag.ok { background: rgba(52,211,153,0.15); color: var(--brand); }
   .nps-tag.pend { background: rgba(251,191,36,0.15); color: var(--amber); }
   .nps-row.pendente { opacity: 0.72; border-style: dashed; }
+  .nps-filtros { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+  .nps-filtro { background: var(--surface); border: 1px solid var(--line-soft); color: var(--ink-soft); font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 20px; }
+  .nps-filtro:hover { border-color: var(--brand); color: var(--ink); }
+  .nps-filtro.on { background: var(--brand); color: #06281f; border-color: var(--brand); }
+  .nps-filtro b { opacity: 0.7; }
   /* Detratores */
   .det-box { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.35); border-radius: 14px; padding: 16px 18px; margin-bottom: 22px; }
   .det-title { font-size: 14px; font-weight: 800; color: var(--red); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
@@ -449,6 +454,7 @@ let credEditingId = null;     // ficha aberta no formulário de credenciamento
 let vendaEditingId = null;    // venda aberta no modal de vendas
 let userRole = 'admin';       // 'admin' ou 'mentor' (vem do login)
 let npsMode = 'pre';          // 'pre' (pré-evento) ou 'pos' (pós-evento)
+let npsFilter = 'todos';      // filtro da lista de NPS
 let npsEditingId = null;      // pessoa aberta no modal de NPS
 let eventos = [];             // lista de eventos
 let currentEvento = localStorage.getItem('crm_evento_atual') || null; // evento selecionado
@@ -1176,16 +1182,41 @@ function renderNps() {
     ${npsDetratoresHtml(base)}
     ${npsRankingsHtml(confirmed)}
     <div class="ev-sec-title" style="margin-top:6px">👤 Respostas por pessoa</div>
+    <div class="nps-filtros">
+      ${npsChip('todos','Todos', base.length)}
+      ${npsChip('promo','😀 Promotores', promo)}
+      ${npsChip('neutro','😐 Neutros', neutro)}
+      ${npsChip('detrator','😡 Detratores', detr)}
+      ${npsChip('semnota','Sem nota', base.filter(c=>npsRespondeu(c)&&!hasNota(c[f])).length)}
+      ${npsChip('pendente','Não responderam', base.filter(c=>!npsRespondeu(c)).length)}
+    </div>
     <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
-    <div id="credEventoList">${npsRowsHtml(confirmed)}</div>`;
+    <div id="credEventoList">${npsRowsHtml(base)}</div>`;
 }
+
+function npsChip(v, label, n) {
+  return `<button class="nps-filtro ${npsFilter===v?'on':''}" onclick="setNpsFilter('${v}')">${label} <b>${n}</b></button>`;
+}
+
+function npsPassaFiltro(c) {
+  const f = npsField();
+  switch (npsFilter) {
+    case 'promo':    return hasNota(c[f]) && Number(c[f]) >= 9;
+    case 'neutro':   return hasNota(c[f]) && Number(c[f]) >= 7 && Number(c[f]) < 9;
+    case 'detrator': return hasNota(c[f]) && Number(c[f]) < 7;
+    case 'semnota':  return npsRespondeu(c) && !hasNota(c[f]);
+    case 'pendente': return !npsRespondeu(c);
+    default:         return true;
+  }
+}
+function setNpsFilter(v) { npsFilter = v; render(); }
 
 function npsRowsHtml(confirmed) {
   const f = npsField(), fo = npsObsField();
   const q = norm(credSearch);
   // 0 = respondeu com nota · 1 = respondeu sem nota · 2 = ainda não respondeu
   const rank = c => npsRespondeu(c) ? (hasNota(c[f]) ? 0 : 1) : 2;
-  const list = confirmed.filter(c => !q || norm(c.name).includes(q)).sort((a, b) => {
+  const list = confirmed.filter(c => (!q || norm(c.name).includes(q)) && npsPassaFiltro(c)).sort((a, b) => {
     const ra = rank(a), rb = rank(b);
     if (ra !== rb) return ra - rb;
     if (ra === 0) return Number(a[f]) - Number(b[f]); // menores notas no topo (atenção)
@@ -1523,7 +1554,7 @@ function onCredSearch(val) {
   credSearch = val;
   const el = document.getElementById('credEventoList');
   if (!el) return;
-  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed().filter(npsRespondeu)); return; }
+  if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed()); return; }
   el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
