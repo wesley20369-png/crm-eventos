@@ -1828,7 +1828,7 @@ function credRowsTenis() {
   const labelLista = id => { const l = currentLists().find(x => x.id === id); return l ? l.label : id; };
   return credConfirmed().map((c, i) => ({
     'Nº': i + 1,
-    'Nome': c.name,
+    'Nome': titleCase(c.name),
     'Telefone': c.phone || '',
     'E-mail': c.email || '',
     'Mentoria': labelLista(c.list),
@@ -1843,7 +1843,7 @@ function credRows() {
   if (isTenisEvent()) return credRowsTenis();
   return credConfirmed().map((c, i) => ({
     'Nº': i + 1,
-    'Nome': c.name,
+    'Nome': titleCase(c.name),
     'Potencial de compra': c.potencial || '',
     'Satisfação no Ecossistema': c.satisfacao || '',
     'Plano': c.plano || '',
@@ -1888,7 +1888,7 @@ function exportCredenciamento() {
 
   // Aba de vendas no evento
   const vendas = confirmed.filter(isBuyer).map((c, i) => ({
-    'Nº': i + 1, 'Nome': c.name, 'Valor pago': Number(c.valorVenda) || 0,
+    'Nº': i + 1, 'Nome': titleCase(c.name), 'Valor pago': Number(c.valorVenda) || 0,
     'Forma de Pagamento': c.formaPagamento || '', 'Telefone': c.phone || '',
   }));
   const wsV = XLSX.utils.json_to_sheet(vendas.length ? vendas : [{'Nº':'','Nome':'','Valor pago':'','Forma de Pagamento':'','Telefone':''}]);
