@@ -1331,7 +1331,8 @@ async function saveNps() {
 
 function copiarNps() {
   const f = npsField(), fo = npsObsField();
-  const rows = credConfirmed().filter(npsRespondeu).map((c, i) => {
+  // exporta exatamente o que o filtro selecionado está mostrando
+  const rows = credConfirmed().filter(npsPassaFiltro).map((c, i) => {
     const d = npsDados(c);
     return {
       'Nº': i + 1, 'Nome': c.name, 'Telefone': c.phone || '',
@@ -1342,11 +1343,12 @@ function copiarNps() {
       'Comentário': c[fo] || '',
     };
   });
-  if (!rows.length) { alert('Não há confirmados.'); return; }
+  const nomeFiltro = { todos:'todos', promo:'promotores', neutro:'neutros', detrator:'detratores', semnota:'sem nota', pendente:'não responderam' }[npsFilter] || 'todos';
+  if (!rows.length) { alert('Nenhum registro no filtro "' + nomeFiltro + '".'); return; }
   const headers = Object.keys(rows[0]);
   const limpa = v => String(v == null ? '' : v).replace(/[\t\n\r]/g, ' ');
   const tsv = [headers.join('\t')].concat(rows.map(r => headers.map(h => limpa(r[h])).join('\t'))).join('\n');
-  const ok = () => alert('✓ Copiado! Cole na sua planilha (Ctrl+V).');
+  const ok = () => alert('✓ Copiado! ' + rows.length + ' registro(s) do filtro "' + nomeFiltro + '". Cole na planilha (Ctrl+V).');
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(tsv).then(ok).catch(() => { fallbackCopy(tsv); ok(); });
   } else { fallbackCopy(tsv); ok(); }
