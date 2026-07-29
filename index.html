@@ -552,7 +552,7 @@ async function fetchEventos() {
 }
 
 async function fetchClients() {
-  let q = db.from('clientes').select('*').order('atualizado_em', { ascending: true });
+  let q = db.from('clientes').select('*').order('id', { ascending: true });
   // Admin/cliente veem os clientes do evento selecionado; mentor é filtrado pelo RLS (próprias indicações)
   if ((userRole === 'admin' || userRole === 'cliente' || userRole === 'lider') && currentEvento) q = q.eq('evento_id', currentEvento);
   const { data, error } = await q;
