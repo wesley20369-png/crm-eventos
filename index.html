@@ -460,6 +460,7 @@ let vendaEditingId = null;    // venda aberta no modal de vendas
 let userRole = 'admin';       // 'admin' ou 'mentor' (vem do login)
 let npsMode = 'pre';          // 'pre' (pré-evento) ou 'pos' (pós-evento)
 let npsFilter = 'todos';      // filtro da lista de NPS
+let fichaFiltro = 'todos';    // filtro da aba Fichas do credenciamento
 let npsEditingId = null;      // pessoa aberta no modal de NPS
 let eventos = [];             // lista de eventos
 let currentEvento = localStorage.getItem('crm_evento_atual') || null; // evento selecionado
@@ -1442,12 +1443,28 @@ function renderCredenciamento() {
     ${content}`;
 }
 
-// ── FICHAS (cards bonitos) ──
-function credFichasHtml(confirmed) {
-  if (!confirmed.length) return '<div class="empty-hint">Nenhum cliente confirmado ainda. Confirme clientes no kanban para credenciá-los aqui.</div>';
-  const completos = confirmed.filter(isCredComplete).length;
-  const pct = confirmed.length ? Math.round(completos / confirmed.length * 100) : 0;
-  const cards = confirmed.map(c => {
+// Filtro da aba Fichas
+function fichaPassa(c) {
+  switch (fichaFiltro) {
+    case 'completo':   return isCredComplete(c);
+    case 'incompleto': return !isCredComplete(c);
+    case 'nps_ok':     return npsRespondeuFase(c, 'pre');
+    case 'nps_pend':   return !npsRespondeuFase(c, 'pre');
+    case 'cobrar':     return !npsRespondeuFase(c, 'pre') && !c.npsCobrado;
+    default:           return true;
+  }
+}
+function setFichaFiltro(v) { fichaFiltro = v; render(); }
+function fichaChip(v, label, n) {
+  return `<button class="nps-filtro ${fichaFiltro===v?'on':''}" onclick="setFichaFiltro('${v}')">${label} <b>${n}</b></button>`;
+}
+
+// Cards das fichas (aplica filtro + busca)
+function credFichasCards(confirmed) {
+  const q = norm(credSearch);
+  const lista = confirmed.filter(c => fichaPassa(c) && (!q || norm(c.name).includes(q)));
+  if (!lista.length) return '<div class="empty-hint" style="grid-column:1/-1">Ninguém neste filtro.</div>';
+  return lista.map(c => {
     const ok = isCredComplete(c);
     const safeId = esc(c.id);
     const ini = (c.name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0] || '').join('').toUpperCase();
@@ -1473,14 +1490,33 @@ function credFichasHtml(confirmed) {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── FICHAS (cards bonitos) ──
+function credFichasHtml(confirmed) {
+  if (!confirmed.length) return '<div class="empty-hint">Nenhum cliente confirmado ainda. Confirme clientes no kanban para credenciá-los aqui.</div>';
+  const completos = confirmed.filter(isCredComplete).length;
+  const pct = confirmed.length ? Math.round(completos / confirmed.length * 100) : 0;
+  const cards = credFichasCards(confirmed);
   const nps = confirmed.filter(c => npsRespondeuFase(c, 'pre')).length;
+  const nComp = completos, nIncomp = confirmed.length - completos;
+  const nCobrar = confirmed.filter(c => !npsRespondeuFase(c, 'pre') && !c.npsCobrado).length;
   return `
     <div class="fc-head">
       <div><span class="fc-big">${completos}</span> <span class="fc-sub">de ${confirmed.length} fichas completas</span></div>
       <div class="fc-progress"><div style="width:${pct}%"></div></div>
       <div class="fc-sub" style="white-space:nowrap">📈 NPS respondido: <b style="color:var(--brand)">${nps}</b> de <b>${confirmed.length}</b></div>
     </div>
-    <div class="fc-grid">${cards}</div>`;
+    <div class="nps-filtros">
+      ${fichaChip('todos','Todos', confirmed.length)}
+      ${fichaChip('completo','✓ Completos', nComp)}
+      ${fichaChip('incompleto','! Faltam dados', nIncomp)}
+      ${fichaChip('nps_ok','📈 Respondeu NPS', nps)}
+      ${fichaChip('nps_pend','NPS pendente', confirmed.length - nps)}
+      ${fichaChip('cobrar','📞 A cobrar', nCobrar)}
+    </div>
+    <input id="credSearchInput" class="cred-search" type="text" placeholder="🔎 Buscar por nome..." value="${esc(credSearch)}" oninput="onCredSearch(this.value)" autocomplete="off">
+    <div id="credEventoList" class="fc-grid">${cards}</div>`;
 }
 
 // ── DIA DO EVENTO ──
@@ -1575,6 +1611,7 @@ function onCredSearch(val) {
   const el = document.getElementById('credEventoList');
   if (!el) return;
   if (activeList === 'nps') { el.innerHTML = npsRowsHtml(credConfirmed()); return; }
+  if (credMode === 'fichas') { el.innerHTML = credFichasCards(credConfirmed()); return; }
   el.innerHTML = (credMode === 'vendas') ? credVendasRowsHtml(credConfirmed()) : credEventoListHtml(credConfirmed());
 }
 
