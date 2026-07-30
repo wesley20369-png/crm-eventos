@@ -1462,7 +1462,8 @@ function fichaChip(v, label, n) {
 // Cards das fichas (aplica filtro + busca)
 function credFichasCards(confirmed) {
   const q = norm(credSearch);
-  const lista = confirmed.filter(c => fichaPassa(c) && (!q || norm(c.name).includes(q)));
+  const lista = confirmed.filter(c => fichaPassa(c) && (!q || norm(c.name).includes(q)))
+                         .sort((a, b) => norm(a.name).localeCompare(norm(b.name)));
   if (!lista.length) return '<div class="empty-hint" style="grid-column:1/-1">Ninguém neste filtro.</div>';
   return lista.map(c => {
     const ok = isCredComplete(c);
