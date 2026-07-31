@@ -303,6 +303,7 @@
   <div class="toolbar">
     <button class="admin-only" onclick="addCardPrompt()">+ Cliente</button>
     <button class="admin-only" onclick="document.getElementById('fileIn').click()">Importar Excel</button>
+    <button class="admin-only" onclick="copiarListaAtual()">📋 Copiar lista p/ Sheets</button>
     <button class="primary admin-only" onclick="exportXlsx()">Exportar Excel (backup)</button>
     <span id="saveStatus" style="font-size:11px;color:var(--brand);opacity:0.45;transition:opacity 0.3s;font-weight:600;white-space:nowrap;">sincronizado</span>
     <button onclick="logout()" title="Sair">Sair</button>
@@ -1912,6 +1913,33 @@ function copiarParaSheets() {
     .concat(rows.map(r => headers.map(h => limpa(r[h])).join('\t')))
     .join('\n');
   const ok = () => alert('✓ Copiado! Agora abra sua planilha do Google, clique na primeira célula (A1) e cole com Ctrl+V.');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tsv).then(ok).catch(() => { fallbackCopy(tsv); ok(); });
+  } else { fallbackCopy(tsv); ok(); }
+}
+
+// Copia a lista (aba) atual do kanban prontinha pra colar no Sheets
+function copiarListaAtual() {
+  if (activeList === 'dashboard' || activeList === 'credenciamento' || activeList === 'nps') {
+    alert('Abra uma lista/aba do kanban (ex: Clientes Audience Club) para copiar.');
+    return;
+  }
+  const labelStatus = id => (currentStatuses().find(s => s.id === id) || {}).label || id;
+  const rows = clients.filter(c => c.list === activeList)
+    .sort((a, b) => norm(a.name).localeCompare(norm(b.name)))
+    .map((c, i) => ({
+      'Nº': i + 1, 'Nome': titleCase(c.name), 'Telefone': c.phone || '',
+      'Status': labelStatus(c.status), 'Produto': c.prod || '',
+      'Plano': c.plano || '', 'Origem': c.origem || '',
+      'Mentor': c.mentor || '', 'Vendedor': c.vendedor || '', 'CS': c.cs || '',
+      'E-mail': c.email || '', 'Instagram': c.instagram || '', 'CPF': c.cpf || '',
+    }));
+  if (!rows.length) { alert('Esta lista está vazia.'); return; }
+  const headers = Object.keys(rows[0]);
+  const limpa = v => String(v == null ? '' : v).replace(/[\t\n\r]/g, ' ');
+  const tsv = [headers.join('\t')].concat(rows.map(r => headers.map(h => limpa(r[h])).join('\t'))).join('\n');
+  const nomeLista = (currentLists().find(l => l.id === activeList) || {}).label || activeList;
+  const ok = () => alert('✓ Copiado! ' + rows.length + ' de "' + nomeLista + '". Cole na planilha (Ctrl+V).');
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(tsv).then(ok).catch(() => { fallbackCopy(tsv); ok(); });
   } else { fallbackCopy(tsv); ok(); }
