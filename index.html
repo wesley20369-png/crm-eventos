@@ -1301,11 +1301,13 @@ function openNps(id) {
   if (!c) return;
   const f = npsField(), fo = npsObsField();
   document.getElementById('npsTitle').textContent = (npsMode === 'pre' ? 'NPS pré-evento — ' : 'NPS pós-evento — ') + (c.name || '');
-  // respostas do formulário (somente leitura)
+  // respostas do formulário (somente leitura) — mostra os campos conhecidos + qualquer outro
   const d = npsDados(c);
-  const linhas = NPS_CAMPOS.concat(NPS_TEXTOS)
-    .filter(q => String(d[q.key] || '').trim())
-    .map(q => `<div class="np-resp"><span>${q.label.replace(/^\S+\s/, '')}</span><b>${esc(d[q.key])}</b></div>`)
+  const rotulos = {};
+  NPS_CAMPOS.concat(NPS_TEXTOS).forEach(q => rotulos[q.key] = q.label.replace(/^\S+\s/, ''));
+  const linhas = Object.keys(d)
+    .filter(k => String(d[k] || '').trim())
+    .map(k => `<div class="np-resp"><span>${esc(rotulos[k] || k)}</span><b>${esc(d[k])}</b></div>`)
     .join('');
   document.getElementById('np_respostas').innerHTML = linhas
     ? `<div class="np-resp-box">${linhas}</div>`
