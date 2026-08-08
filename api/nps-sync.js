@@ -90,11 +90,67 @@ module.exports = async (req, res) => {
       });
       if (!r.ok) { const t = await r.text(); return res.status(200).json({ ok: false, erro: t, atualizados }); }
     }
-    return res.status(200).json({ ok: true, fase, recebidos: rows.length, atualizados, criados: novos.length });
+
+    // ── Indicações: cada indicado vira card na lista "Indicações NPS" do evento 8.0 ──
+    const indics = [];
+    for (const row of rows) {
+      const por = String(row.nome || '').trim();
+      const lst = row.indicacoes;
+      const linhas = Array.isArray(lst) ? lst : (typeof lst === 'string' ? lst.split(/\r?\n/) : []);
+      for (const item of linhas) {
+        const p = parseIndic(String(item || ''));
+        if (p.nome) indics.push({ nome: p.nome, tel: p.tel, por });
+      }
+    }
+    let indicados = 0;
+    if (indics.length) {
+      const er8 = await fetch(SB + '/rest/v1/eventos?select=id&nome=ilike.*audience 8*&limit=1', { headers });
+      const ea8 = await er8.json();
+      const ev8 = (Array.isArray(ea8) && ea8.length) ? ea8[0].id : null;
+      if (ev8) {
+        const r8 = await fetch(SB + '/rest/v1/clientes?select=nome,telefone&evento_id=eq.' + ev8, { headers });
+        const ex8 = await r8.json();
+        const eP = new Set(), eN = new Set();
+        (ex8 || []).forEach(c => { const t = telnorm(c.telefone); if (t) eP.add(t); const n = norm(c.nome); if (n) eN.add(n); });
+        const novosInd = [];
+        for (const ind of indics) {
+          const t = telnorm(ind.tel), n = norm(ind.nome);
+          if ((t && eP.has(t)) || (!t && eN.has(n))) continue;
+          novosInd.push({
+            nome: ind.nome, telefone: ind.tel, lista: 'indicacoes_nps', status: 'em_aberto',
+            tentativas: 0, observacao: ind.por ? ('Indicado por ' + ind.por) : '',
+            origem: ind.por ? ('Indicação de ' + ind.por) : 'Indicação NPS',
+            evento_id: ev8, atualizado_em: new Date().toISOString(),
+          });
+          if (t) eP.add(t);
+          eN.add(n);
+        }
+        if (novosInd.length) {
+          await fetch(SB + '/rest/v1/clientes', { method: 'POST', headers: Object.assign({}, headers, { Prefer: 'return=minimal' }), body: JSON.stringify(novosInd) });
+        }
+        indicados = novosInd.length;
+      }
+    }
+
+    return res.status(200).json({ ok: true, fase, recebidos: rows.length, atualizados, criados: novos.length, indicados });
   } catch (err) {
     return res.status(200).json({ ok: false, erro: String(err) });
   }
 };
+
+// Extrai nome e telefone de uma linha de indicação ("Fulano - (11) 99999-8888")
+function parseIndic(str) {
+  const s = String(str || '').trim();
+  if (!s) return { nome: '', tel: '' };
+  const m = s.match(/\+?\d[\d\s().-]{6,}\d/);
+  const tel = m ? m[0].trim() : '';
+  let nome = (tel ? s.replace(tel, '') : s)
+    .replace(/whats?app?/ig, '')
+    .replace(/[|:–-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return { nome, tel };
+}
 
 function norm(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
