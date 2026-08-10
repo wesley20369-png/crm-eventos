@@ -239,6 +239,13 @@
   .rk-top b { color: var(--brand); white-space: nowrap; }
   .rk-bar { height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; }
   .rk-bar > div { height: 100%; background: var(--brand); border-radius: 4px; }
+  .rk-card.clicavel { cursor: pointer; transition: all 0.15s; }
+  .rk-card.clicavel:hover { border-color: var(--brand); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+  .aval-linha { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .aval-linha:last-child { border-bottom: none; }
+  .aval-nome { font-size: 13.5px; font-weight: 700; }
+  .aval-obs { font-size: 12px; color: var(--ink-soft); font-style: italic; margin-top: 2px; }
+  .aval-obs.vazio { color: var(--ink-dim); font-style: normal; }
   /* Respostas na ficha */
   .np-resp-box { background: var(--bg2); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; margin-bottom: 4px; max-height: 260px; overflow: auto; }
   .np-resp { display: flex; flex-direction: column; gap: 2px; padding: 7px 0; border-bottom: 1px solid var(--line); }
@@ -381,6 +388,16 @@
     <div class="modal-actions">
       <button onclick="closeNps()">Cancelar</button>
       <button class="primary" onclick="saveNps()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="avalModalBg">
+  <div class="modal" style="max-width:460px">
+    <h3 id="avalTitle">Avaliação</h3>
+    <div id="avalBody" style="max-height:60vh;overflow:auto"></div>
+    <div class="modal-actions">
+      <button class="primary" onclick="closeAval()">Fechar</button>
     </div>
   </div>
 </div>
@@ -1218,31 +1235,82 @@ function npsScore(base, campo) {
   return Math.round((promo - detr) / resp.length * 100);
 }
 
-// Painel de médias do pós-evento (notas 0-10 de cada pergunta de satisfação)
+// Avaliações dos palestrantes: { rótulo: [ {nome, nota, obs} ] }
+function npsAvalMap(base) {
+  const map = {};
+  base.forEach(c => {
+    const av = (c.npsPosDados && c.npsPosDados.aval) || {};
+    Object.keys(av).forEach(k => {
+      const it = av[k] || {};
+      const n = parseInt(String(it.nota).replace(/\D/g, ''));
+      if (isNaN(n)) return;
+      (map[k] = map[k] || []).push({ nome: c.name, nota: n, obs: String(it.obs || '').trim() });
+    });
+  });
+  return map;
+}
+
+let _avalKeys = [];
+
+// Painel de médias do pós-evento (avaliações clicáveis + demais notas)
 function npsMediasHtml(base) {
+  const avalMap = npsAvalMap(base);
+  _avalKeys = Object.keys(avalMap).filter(k => avalMap[k].length)
+    .sort((a, b) => media(avalMap[b]) - media(avalMap[a]));
+
+  // demais perguntas de nota (0-10) que não são avaliação de palestrante
   const acc = {};
   base.forEach(c => {
     const d = c.npsPosDados || {};
     Object.keys(d).forEach(k => {
+      if (k === 'aval') return;
       const bruto = String(d[k]).trim();
       const n = parseInt(bruto.replace(/\D/g, ''));
       if (!isNaN(n) && n >= 0 && n <= 10 && bruto.length <= 4) (acc[k] = acc[k] || []).push(n);
     });
   });
-  const keys = Object.keys(acc).filter(k => acc[k].length);
-  if (!keys.length) return '<div class="empty-hint" style="margin:6px 0 20px">Ainda não há respostas do pós-evento com notas. Assim que o pessoal responder, as médias aparecem aqui.</div>';
-  const cards = keys.sort((a, b) => (acc[b].reduce((s,x)=>s+x,0)/acc[b].length) - (acc[a].reduce((s,x)=>s+x,0)/acc[a].length)).map(k => {
-    const arr = acc[k];
-    const m = arr.reduce((s, x) => s + x, 0) / arr.length;
+  const outras = Object.keys(acc).filter(k => acc[k].length);
+
+  if (!_avalKeys.length && !outras.length)
+    return '<div class="empty-hint" style="margin:6px 0 20px">Ainda não há respostas do pós-evento com notas. Assim que o pessoal responder, as médias aparecem aqui.</div>';
+
+  const card = (titulo, m, n, clicavel) => {
     const cor = m >= 8 ? 'var(--brand)' : m >= 6 ? 'var(--amber)' : 'var(--red)';
-    return `<div class="rk-card">
-      <div class="rk-title">${esc(k)}</div>
-      <div style="font-size:26px;font-weight:800;color:${cor}">${m.toFixed(1)}<span style="font-size:12px;color:var(--ink-dim);font-weight:600"> / 10 · ${arr.length} resp.</span></div>
+    return `<div class="rk-card ${clicavel ? 'clicavel' : ''}" ${clicavel || ''}>
+      <div class="rk-title">${esc(titulo)} ${clicavel ? '<span style="color:var(--ink-dim);font-weight:600">🔍 ver notas</span>' : ''}</div>
+      <div style="font-size:26px;font-weight:800;color:${cor}">${m.toFixed(1)}<span style="font-size:12px;color:var(--ink-dim);font-weight:600"> / 10 · ${n} resp.</span></div>
       <div class="rk-bar" style="margin-top:8px"><div style="width:${m*10}%;background:${cor}"></div></div>
     </div>`;
-  }).join('');
-  return `<div class="rk-grid">${cards}</div>`;
+  };
+
+  const avalCards = _avalKeys.map((k, i) =>
+    card(k, media(avalMap[k]), avalMap[k].length, `onclick="verAval(${i})"`)).join('');
+  const outrasCards = outras.sort((a, b) => (acc[b].reduce((s,x)=>s+x,0)/acc[b].length) - (acc[a].reduce((s,x)=>s+x,0)/acc[a].length))
+    .map(k => card(k, acc[k].reduce((s, x) => s + x, 0) / acc[k].length, acc[k].length, '')).join('');
+
+  return `${avalCards ? '<div class="ev-sec-title" style="margin-top:2px">🎤 Avaliação dos palestrantes/time (clique para ver as notas)</div><div class="rk-grid">' + avalCards + '</div>' : ''}
+    ${outrasCards ? '<div class="ev-sec-title" style="margin-top:16px">📊 Outras avaliações</div><div class="rk-grid">' + outrasCards + '</div>' : ''}`;
 }
+
+function media(arr) { return arr.reduce((s, x) => s + (x.nota !== undefined ? x.nota : x), 0) / arr.length; }
+
+function verAval(i) {
+  const k = _avalKeys[i];
+  if (!k) return;
+  const arr = (npsAvalMap(credConfirmed())[k] || []).slice().sort((a, b) => a.nota - b.nota);
+  const linhas = arr.map(x => {
+    const cls = x.nota >= 9 ? 'promo' : x.nota >= 7 ? 'neutro' : 'detrator';
+    return `<div class="aval-linha">
+      <span class="nps-nota ${cls}">${x.nota}</span>
+      <div><div class="aval-nome">${esc(titleCase(x.nome))}</div>
+        ${x.obs ? `<div class="aval-obs">"${esc(x.obs)}"</div>` : '<div class="aval-obs vazio">sem comentário</div>'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('avalTitle').textContent = k + ' — média ' + media(arr).toFixed(1);
+  document.getElementById('avalBody').innerHTML = linhas || '<div class="empty-hint">Sem notas ainda.</div>';
+  document.getElementById('avalModalBg').classList.add('show');
+}
+function closeAval() { document.getElementById('avalModalBg').classList.remove('show'); }
 
 function renderNps() {
   destroyCharts();
@@ -2215,7 +2283,8 @@ document.getElementById('credModalBg').addEventListener('click', e => { if (e.ta
 document.getElementById('vendaModalBg').addEventListener('click', e => { if (e.target.id === 'vendaModalBg') closeVenda(); });
 document.getElementById('eventoModalBg').addEventListener('click', e => { if (e.target.id === 'eventoModalBg') closeEventoModal(); });
 document.getElementById('npsModalBg').addEventListener('click', e => { if (e.target.id === 'npsModalBg') closeNps(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); closeEventoModal(); closeNps(); } });
+document.getElementById('avalModalBg').addEventListener('click', e => { if (e.target.id === 'avalModalBg') closeAval(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCred(); closeVenda(); closeEventoModal(); closeNps(); closeAval(); } });
 
 // ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────────
 
