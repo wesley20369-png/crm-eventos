@@ -596,11 +596,19 @@ async function deleteClient(id) {
   return true;
 }
 
+// Recarrega no máximo 1 vez a cada 2,5s, mesmo com muitas mudanças seguidas
+// (evita recarregar a base inteira centenas de vezes durante importações em massa)
+let _refetchTimer = null;
+function agendarFetchClients() {
+  if (_refetchTimer) return;
+  _refetchTimer = setTimeout(() => { _refetchTimer = null; fetchClients(); }, 2500);
+}
+
 // Subscrição de tempo real
 function setupRealtime() {
   db.channel('clientes-all')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes' }, () => {
-      fetchClients();
+      agendarFetchClients();
     })
     .subscribe((status) => {
       setConnStatus(status === 'SUBSCRIBED');
