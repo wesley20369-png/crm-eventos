@@ -504,6 +504,7 @@ function fromDb(row) {
     npsPreDados:    row.nps_pre_dados            || {},
     npsPosDados:    row.nps_pos_dados            || {},
     npsCobrado:     !!row.nps_cobrado,
+    confirmadoEm:   row.confirmado_em            || null,
   };
 }
 
@@ -553,8 +554,12 @@ async function fetchEventos() {
   if (currentEvento) localStorage.setItem('crm_evento_atual', currentEvento);
 }
 
+// Colunas leves (sem os JSONB pesados do NPS, que são carregados só na aba NPS)
+const COLS_LEVES = 'id,nome,telefone,produto,lista,status,tentativas,observacao,potencial_compra,satisfacao_ecossistema,plano,origem,mentor,vendedor,faturamento,forma_pagamento,instagram,cpf,email,grupo_oficial,confirmacao,presente,horario_chegada,valor_venda,fechou_evento,camiseta,cs,nps_pre,nps_pre_obs,nps_pos,nps_pos_obs,nps_cobrado,confirmado_em,evento_id,atualizado_em,origem_id';
+let npsDadosCarregado = false;
+
 async function fetchClients() {
-  let q = db.from('clientes').select('*').order('id', { ascending: true });
+  let q = db.from('clientes').select(COLS_LEVES).order('id', { ascending: true });
   // Admin/cliente veem os clientes do evento selecionado; mentor é filtrado pelo RLS (próprias indicações)
   if ((userRole === 'admin' || userRole === 'cliente' || userRole === 'lider') && currentEvento) q = q.eq('evento_id', currentEvento);
   const { data, error } = await q;
@@ -564,7 +569,24 @@ async function fetchClients() {
     return;
   }
   clients = data.map(fromDb);
+  npsDadosCarregado = false;
+  if (activeList === 'nps' || activeList === 'credenciamento') { await carregarNpsDados(); }
   render();
+}
+
+// Carrega os dados pesados do NPS (jsonb) só quando necessário e mescla no clients
+async function carregarNpsDados() {
+  let q = db.from('clientes').select('id,nps_pre_dados,nps_pos_dados');
+  if ((userRole === 'admin' || userRole === 'cliente' || userRole === 'lider') && currentEvento) q = q.eq('evento_id', currentEvento);
+  const { data, error } = await q;
+  if (error) return;
+  const map = {};
+  data.forEach(r => map[r.id] = r);
+  clients.forEach(c => {
+    const r = map[c.id];
+    if (r) { c.npsPreDados = r.nps_pre_dados || {}; c.npsPosDados = r.nps_pos_dados || {}; }
+  });
+  npsDadosCarregado = true;
 }
 
 async function insertClient(c) {
@@ -688,7 +710,11 @@ function renderTabs() {
   document.getElementById('tabs').innerHTML = tabs;
 }
 
-function setList(id) { activeList = id; render(); }
+async function setList(id) {
+  activeList = id;
+  if ((id === 'nps' || id === 'credenciamento') && !npsDadosCarregado) { await carregarNpsDados(); }
+  render();
+}
 
 // ── Seletor de eventos ──
 function renderEventoSelector() {
@@ -1009,13 +1035,36 @@ function renderDashboard() {
         <div style="position:relative;height:240px"><canvas id="barChart"></canvas></div>
       </div>
     </div>
-    <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:24px">
       <div style="font-size:13px;font-weight:700;margin-bottom:16px;color:var(--ink)">Detalhe por lista</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
         ${currentLists().map(l => listCard(l, ls[l.id])).join('')}
       </div>
-    </div>`;
+    </div>
+    ${ultimosConfirmadosHtml()}`;
   drawCharts(g, ls);
+}
+
+function ultimosConfirmadosHtml() {
+  const conf = clients.filter(c => c.status === 'confirmou' && c.confirmadoEm)
+    .sort((a, b) => new Date(b.confirmadoEm) - new Date(a.confirmadoEm))
+    .slice(0, 12);
+  if (!conf.length) {
+    return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--ink)">🆕 Últimos confirmados</div>
+      <div class="empty-hint" style="text-align:left;padding:6px 0">A data de confirmação passa a ser registrada a partir de agora. Conforme você mover pessoas para "Confirmou", elas aparecem aqui.</div>
+    </div>`;
+  }
+  const linhas = conf.map(c => {
+    const dt = new Date(c.confirmadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return `<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px">
+      <span style="font-weight:600">${esc(titleCase(c.name))}</span>
+      <span style="color:var(--ink-dim);white-space:nowrap">${dt}</span></div>`;
+  }).join('');
+  return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--ink)">🆕 Últimos confirmados</div>
+    ${linhas}
+  </div>`;
 }
 
 function bigStat(label, val, color) {
@@ -1160,6 +1209,41 @@ function npsRespondeuFase(c, fase) {
   return hasNota(nota) || (d && typeof d === 'object' && Object.keys(d).length > 0);
 }
 
+// NPS (promotores - detratores) de uma fase, sobre uma base
+function npsScore(base, campo) {
+  const resp = base.filter(c => hasNota(c[campo]));
+  if (!resp.length) return null;
+  const promo = resp.filter(c => Number(c[campo]) >= 9).length;
+  const detr = resp.filter(c => Number(c[campo]) < 7).length;
+  return Math.round((promo - detr) / resp.length * 100);
+}
+
+// Painel de médias do pós-evento (notas 0-10 de cada pergunta de satisfação)
+function npsMediasHtml(base) {
+  const acc = {};
+  base.forEach(c => {
+    const d = c.npsPosDados || {};
+    Object.keys(d).forEach(k => {
+      const bruto = String(d[k]).trim();
+      const n = parseInt(bruto.replace(/\D/g, ''));
+      if (!isNaN(n) && n >= 0 && n <= 10 && bruto.length <= 4) (acc[k] = acc[k] || []).push(n);
+    });
+  });
+  const keys = Object.keys(acc).filter(k => acc[k].length);
+  if (!keys.length) return '<div class="empty-hint" style="margin:6px 0 20px">Ainda não há respostas do pós-evento com notas. Assim que o pessoal responder, as médias aparecem aqui.</div>';
+  const cards = keys.sort((a, b) => (acc[b].reduce((s,x)=>s+x,0)/acc[b].length) - (acc[a].reduce((s,x)=>s+x,0)/acc[a].length)).map(k => {
+    const arr = acc[k];
+    const m = arr.reduce((s, x) => s + x, 0) / arr.length;
+    const cor = m >= 8 ? 'var(--brand)' : m >= 6 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="rk-card">
+      <div class="rk-title">${esc(k)}</div>
+      <div style="font-size:26px;font-weight:800;color:${cor}">${m.toFixed(1)}<span style="font-size:12px;color:var(--ink-dim);font-weight:600"> / 10 · ${arr.length} resp.</span></div>
+      <div class="rk-bar" style="margin-top:8px"><div style="width:${m*10}%;background:${cor}"></div></div>
+    </div>`;
+  }).join('');
+  return `<div class="rk-grid">${cards}</div>`;
+}
+
 function renderNps() {
   destroyCharts();
   const board = document.getElementById('board');
@@ -1195,9 +1279,14 @@ function renderNps() {
       ${evStat('Promotores (9-10)', promo, 'var(--brand)')}
       ${evStat('Neutros (7-8)', neutro, 'var(--amber)')}
       ${evStat('Detratores (0-6)', detr, 'var(--red)')}
+      ${(() => {
+        const pre = npsScore(base, 'npsPre'), pos = npsScore(base, 'npsPos');
+        if (pre === null || pos === null) return '';
+        return evStat('Pré → Pós', pre + ' → ' + pos, pos >= pre ? 'var(--brand)' : 'var(--red)');
+      })()}
     </div>
     ${npsDetratoresHtml(base)}
-    ${npsRankingsHtml(confirmed)}
+    ${npsMode === 'pos' ? npsMediasHtml(base) : npsRankingsHtml(confirmed)}
     <div class="ev-sec-title" style="margin-top:6px">👤 Respostas por pessoa</div>
     <div class="nps-filtros">
       ${npsChip('todos','Todos', base.length)}
