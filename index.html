@@ -1250,13 +1250,16 @@ function npsAvalMap(base) {
   return map;
 }
 
+// Palestrantes/time que sempre aparecem no painel do pós
+const AVAL_FIXOS = ['Elias Maman', 'Cientistas da atenção', 'Fábio Mariani', 'Baldan', 'Atendimento (Juan e time)'];
 let _avalKeys = [];
 
 // Painel de médias do pós-evento (avaliações clicáveis + demais notas)
 function npsMediasHtml(base) {
   const avalMap = npsAvalMap(base);
-  _avalKeys = Object.keys(avalMap).filter(k => avalMap[k].length)
-    .sort((a, b) => media(avalMap[b]) - media(avalMap[a]));
+  // sempre mostra os fixos + quaisquer outros que apareçam nas respostas
+  const extras = Object.keys(avalMap).filter(k => AVAL_FIXOS.indexOf(k) < 0);
+  _avalKeys = AVAL_FIXOS.concat(extras);
 
   // demais perguntas de nota (0-10) que não são avaliação de palestrante
   const acc = {};
@@ -1269,26 +1272,34 @@ function npsMediasHtml(base) {
       if (!isNaN(n) && n >= 0 && n <= 10 && bruto.length <= 4) (acc[k] = acc[k] || []).push(n);
     });
   });
-  const outras = Object.keys(acc).filter(k => acc[k].length);
+  const outras = Object.keys(acc).filter(k => acc[k].length)
+    .sort((a, b) => (acc[b].reduce((s,x)=>s+x,0)/acc[b].length) - (acc[a].reduce((s,x)=>s+x,0)/acc[a].length));
 
-  if (!_avalKeys.length && !outras.length)
-    return '<div class="empty-hint" style="margin:6px 0 20px">Ainda não há respostas do pós-evento com notas. Assim que o pessoal responder, as médias aparecem aqui.</div>';
-
-  const card = (titulo, m, n, clicavel) => {
+  const cardAval = (titulo, arr, i) => {
+    const n = arr.length;
+    const m = n ? media(arr) : 0;
+    const cor = !n ? 'var(--ink-dim)' : m >= 8 ? 'var(--brand)' : m >= 6 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="rk-card clicavel" onclick="verAval(${i})">
+      <div class="rk-title">${esc(titulo)} <span style="color:var(--ink-dim);font-weight:600">🔍</span></div>
+      <div style="font-size:26px;font-weight:800;color:${cor}">${n ? m.toFixed(1) : '—'}<span style="font-size:12px;color:var(--ink-dim);font-weight:600"> / 10 · ${n} resp.</span></div>
+      <div class="rk-bar" style="margin-top:8px"><div style="width:${n?m*10:0}%;background:${cor}"></div></div>
+    </div>`;
+  };
+  const cardOutra = (titulo, arr) => {
+    const m = arr.reduce((s, x) => s + x, 0) / arr.length;
     const cor = m >= 8 ? 'var(--brand)' : m >= 6 ? 'var(--amber)' : 'var(--red)';
-    return `<div class="rk-card ${clicavel ? 'clicavel' : ''}" ${clicavel || ''}>
-      <div class="rk-title">${esc(titulo)} ${clicavel ? '<span style="color:var(--ink-dim);font-weight:600">🔍 ver notas</span>' : ''}</div>
-      <div style="font-size:26px;font-weight:800;color:${cor}">${m.toFixed(1)}<span style="font-size:12px;color:var(--ink-dim);font-weight:600"> / 10 · ${n} resp.</span></div>
+    return `<div class="rk-card">
+      <div class="rk-title">${esc(titulo)}</div>
+      <div style="font-size:26px;font-weight:800;color:${cor}">${m.toFixed(1)}<span style="font-size:12px;color:var(--ink-dim);font-weight:600"> / 10 · ${arr.length} resp.</span></div>
       <div class="rk-bar" style="margin-top:8px"><div style="width:${m*10}%;background:${cor}"></div></div>
     </div>`;
   };
 
-  const avalCards = _avalKeys.map((k, i) =>
-    card(k, media(avalMap[k]), avalMap[k].length, `onclick="verAval(${i})"`)).join('');
-  const outrasCards = outras.sort((a, b) => (acc[b].reduce((s,x)=>s+x,0)/acc[b].length) - (acc[a].reduce((s,x)=>s+x,0)/acc[a].length))
-    .map(k => card(k, acc[k].reduce((s, x) => s + x, 0) / acc[k].length, acc[k].length, '')).join('');
+  const avalCards = _avalKeys.map((k, i) => cardAval(k, avalMap[k] || [], i)).join('');
+  const outrasCards = outras.map(k => cardOutra(k, acc[k])).join('');
 
-  return `${avalCards ? '<div class="ev-sec-title" style="margin-top:2px">🎤 Avaliação dos palestrantes/time (clique para ver as notas)</div><div class="rk-grid">' + avalCards + '</div>' : ''}
+  return `<div class="ev-sec-title" style="margin-top:2px">🎤 Avaliação dos palestrantes/time (clique para ver as notas)</div>
+    <div class="rk-grid">${avalCards}</div>
     ${outrasCards ? '<div class="ev-sec-title" style="margin-top:16px">📊 Outras avaliações</div><div class="rk-grid">' + outrasCards + '</div>' : ''}`;
 }
 
