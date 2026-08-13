@@ -482,6 +482,8 @@ let fichaFiltro = 'todos';    // filtro da aba Fichas do credenciamento
 let npsEditingId = null;      // pessoa aberta no modal de NPS
 let eventos = [];             // lista de eventos
 let currentEvento = localStorage.getItem('crm_evento_atual') || null; // evento selecionado
+let checklist = [];            // itens do checklist do evento atual
+let checklistEvento = null;    // de qual evento o checklist carregado é
 
 // Mapeia linha do banco para objeto do app
 function fromDb(row) {
@@ -652,6 +654,11 @@ function setupRealtime() {
     .subscribe((status) => {
       setConnStatus(status === 'SUBSCRIBED');
     });
+  db.channel('checklist-all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist' }, async () => {
+      if (activeList === 'checklist') { await fetchChecklist(); render(); }
+    })
+    .subscribe();
   if (userRole === 'admin') {
     db.channel('eventos-all')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos' }, async () => {
@@ -708,6 +715,9 @@ function render() {
   } else if (activeList === 'nps') {
     document.getElementById('stats').style.display = 'none';
     renderNps();
+  } else if (activeList === 'checklist') {
+    document.getElementById('stats').style.display = 'none';
+    renderChecklist();
   } else {
     document.getElementById('stats').style.display = 'flex';
     renderStats();
@@ -724,12 +734,15 @@ function renderTabs() {
   const nConf = clients.filter(c => c.status === 'confirmou').length;
   tabs += `<div class="tab ${activeList==='credenciamento'?'active':''}" onclick="setList('credenciamento')">🎫 Credenciamento<span class="count">${nConf}</span></div>`;
   tabs += `<div class="tab ${activeList==='nps'?'active':''}" onclick="setList('nps')">📈 NPS</div>`;
+  const ckDone = checklist.filter(i => i.feito).length;
+  tabs += `<div class="tab ${activeList==='checklist'?'active':''}" onclick="setList('checklist')">📋 Checklist<span class="count">${ckDone}/${checklist.length}</span></div>`;
   document.getElementById('tabs').innerHTML = tabs;
 }
 
 async function setList(id) {
   activeList = id;
   if ((id === 'nps' || id === 'credenciamento') && !npsDadosCarregado) { await carregarNpsDados(); }
+  if (id === 'checklist') { await fetchChecklist(); }
   render();
 }
 
@@ -1013,6 +1026,124 @@ function listStats(listId) {
 
 let charts = [];
 function destroyCharts() { charts.forEach(c => { try { c.destroy(); } catch(e) {} }); charts = []; }
+
+// ─── CHECKLIST ────────────────────────────────────────────────────────────────
+const CK_CATS = ['Estrutura','Material','Equipe','Comunicação','Alimentação','Tecnologia','Financeiro','Conteúdo','Geral'];
+
+async function fetchChecklist() {
+  if (!currentEvento) { checklist = []; checklistEvento = null; return; }
+  const { data, error } = await db.from('checklist')
+    .select('*').eq('evento_id', currentEvento)
+    .order('categoria', { ascending: true })
+    .order('ordem', { ascending: true })
+    .order('id', { ascending: true });
+  if (!error) { checklist = data || []; checklistEvento = currentEvento; }
+}
+
+function renderChecklist() {
+  const board = document.getElementById('board');
+  board.style.display = 'block';
+  if (checklistEvento !== currentEvento) { fetchChecklist().then(render); return; }
+
+  const total = checklist.length;
+  const feitos = checklist.filter(i => i.feito).length;
+  const pct = total ? Math.round((feitos / total) * 100) : 0;
+
+  // agrupa por categoria (na ordem de CK_CATS, depois extras)
+  const grupos = {};
+  checklist.forEach(i => { const c = i.categoria || 'Geral'; (grupos[c] = grupos[c] || []).push(i); });
+  const ordemCats = [...CK_CATS.filter(c => grupos[c]), ...Object.keys(grupos).filter(c => !CK_CATS.includes(c))];
+
+  const catOptions = CK_CATS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+  let html = `
+    <div style="max-width:900px;margin:0 auto">
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:15px;font-weight:700">Progresso do evento</div>
+          <div style="font-size:14px;color:var(--ink-soft)"><b style="color:var(--green)">${feitos}</b> / ${total} feitos · ${pct}%</div>
+        </div>
+        <div style="height:12px;background:var(--bg2);border-radius:8px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--green);transition:width .3s"></div>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="ckTexto" placeholder="Novo item do checklist…" style="flex:1;min-width:200px;font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)" onkeydown="if(event.key==='Enter')checklistAdd()">
+        <select id="ckCat" style="font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)">${catOptions}</select>
+        <button class="primary" onclick="checklistAdd()">+ Adicionar</button>
+      </div>`;
+
+  if (!total) {
+    html += `<div style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum item ainda. Adicione o primeiro acima. 👆</div>`;
+  }
+
+  ordemCats.forEach(cat => {
+    const itens = grupos[cat];
+    const cf = itens.filter(i => i.feito).length;
+    html += `
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin:0 0 8px 4px">${esc(cat)} <span style="color:var(--brand)">(${cf}/${itens.length})</span></div>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden">`;
+    itens.forEach((i, idx) => {
+      html += `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;${idx?'border-top:1px solid var(--line-soft)':''}">
+          <input type="checkbox" ${i.feito?'checked':''} onchange="checklistToggle(${i.id}, this.checked)" style="width:20px;height:20px;cursor:pointer;flex-shrink:0">
+          <div style="flex:1;font-size:14px;${i.feito?'text-decoration:line-through;color:var(--ink-soft)':''}">${esc(i.texto)}</div>
+          <button onclick="checklistEdit(${i.id})" title="Editar" style="background:none;border:none;cursor:pointer;font-size:15px;opacity:.6">✏️</button>
+          <button onclick="checklistDel(${i.id})" title="Apagar" style="background:none;border:none;cursor:pointer;font-size:15px;opacity:.6">🗑️</button>
+        </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  board.innerHTML = html;
+}
+
+async function checklistAdd() {
+  const inp = document.getElementById('ckTexto');
+  const texto = (inp.value || '').trim();
+  if (!texto) { inp.focus(); return; }
+  const cat = document.getElementById('ckCat').value || 'Geral';
+  const maxOrdem = Math.max(0, ...checklist.filter(i => i.categoria === cat).map(i => i.ordem || 0));
+  const { error } = await db.from('checklist').insert({
+    evento_id: currentEvento, texto, categoria: cat, ordem: maxOrdem + 1,
+  });
+  if (error) { alert('Erro ao adicionar: ' + error.message); return; }
+  inp.value = '';
+  await fetchChecklist();
+  render();
+}
+
+async function checklistToggle(id, feito) {
+  const item = checklist.find(i => i.id === id);
+  if (item) item.feito = feito; // otimista
+  await db.from('checklist').update({ feito, atualizado_em: new Date().toISOString() }).eq('id', id);
+  await fetchChecklist();
+  render();
+}
+
+async function checklistEdit(id) {
+  const item = checklist.find(i => i.id === id);
+  if (!item) return;
+  const novo = prompt('Editar item:', item.texto);
+  if (novo === null) return;
+  const texto = novo.trim();
+  if (!texto) return;
+  await db.from('checklist').update({ texto, atualizado_em: new Date().toISOString() }).eq('id', id);
+  await fetchChecklist();
+  render();
+}
+
+async function checklistDel(id) {
+  const item = checklist.find(i => i.id === id);
+  if (!item) return;
+  if (!confirm('Apagar "' + item.texto + '"?')) return;
+  await db.from('checklist').delete().eq('id', id);
+  await fetchChecklist();
+  render();
+}
 
 function renderDashboard() {
   destroyCharts();
