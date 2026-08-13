@@ -702,7 +702,7 @@ function render() {
     return;
   }
   // Se a aba ativa não existe nas listas do evento atual, volta pra primeira válida
-  if (activeList !== 'dashboard' && activeList !== 'credenciamento' && activeList !== 'nps' && !currentLists().some(l => l.id === activeList)) {
+  if (activeList !== 'dashboard' && activeList !== 'credenciamento' && activeList !== 'nps' && activeList !== 'checklist' && !currentLists().some(l => l.id === activeList)) {
     activeList = currentLists()[0] ? currentLists()[0].id : 'dashboard';
   }
   renderTabs();
