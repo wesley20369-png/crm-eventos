@@ -1030,20 +1030,32 @@ function destroyCharts() { charts.forEach(c => { try { c.destroy(); } catch(e) {
 // ─── CHECKLIST ────────────────────────────────────────────────────────────────
 const CK_CATS = ['Estrutura','Material','Equipe','Comunicação','Alimentação','Tecnologia','Financeiro','Conteúdo','Geral'];
 
+let checklistErro = '';
 async function fetchChecklist() {
   if (!currentEvento) { checklist = []; checklistEvento = null; return; }
+  checklistErro = '';
   const { data, error } = await db.from('checklist')
     .select('*').eq('evento_id', currentEvento)
     .order('categoria', { ascending: true })
     .order('ordem', { ascending: true })
     .order('id', { ascending: true });
-  if (!error) { checklist = data || []; checklistEvento = currentEvento; }
+  checklist = error ? [] : (data || []);
+  checklistEvento = currentEvento; // marca sempre, evita loop de recarga
+  if (error) checklistErro = error.message || String(error);
 }
 
 function renderChecklist() {
   const board = document.getElementById('board');
   board.style.display = 'block';
-  if (checklistEvento !== currentEvento) { fetchChecklist().then(render); return; }
+  if (checklistEvento !== currentEvento) { board.innerHTML = '<div style="text-align:center;color:var(--ink-soft);padding:30px">Carregando…</div>'; fetchChecklist().then(render); return; }
+  if (checklistErro) {
+    board.innerHTML = `<div style="max-width:700px;margin:20px auto;background:var(--surface);border:1px solid var(--red);border-radius:14px;padding:20px">
+      <div style="font-weight:700;color:var(--red);margin-bottom:8px">Não foi possível carregar o checklist</div>
+      <div style="font-size:13px;color:var(--ink-soft);margin-bottom:10px">${esc(checklistErro)}</div>
+      <div style="font-size:13px">Se aparece <b>relation "checklist" does not exist</b>, é porque a tabela ainda não foi criada no Supabase. Rode o SQL de criação da tabela <code>checklist</code>.</div>
+    </div>`;
+    return;
+  }
 
   const total = checklist.length;
   const feitos = checklist.filter(i => i.feito).length;
