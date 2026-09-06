@@ -1393,16 +1393,25 @@ function npsAvalMap(base) {
   return map;
 }
 
-// Palestrantes/time que sempre aparecem no painel do pós
-const AVAL_FIXOS = ['Elias Maman', 'Cientistas da atenção', 'Fábio Mariani', 'Baldan', 'Atendimento (Juan e time)'];
+// Palestrantes/time que sempre aparecem no painel do pós (por evento)
+const AVAL_FIXOS_IMERSAO = ['Elias Maman', 'Cientistas da atenção', 'Fábio Mariani', 'Baldan', 'Atendimento (Juan e time)'];
+function avalFixos() {
+  const ev = eventos.find(e => e.id === currentEvento);
+  const nm = ev ? norm(ev.nome) : '';
+  // Imersão/Audience: mantém os palestrantes fixos; outros eventos: mostra só os que aparecem nas respostas
+  if (nm.includes('imers') || nm.includes('audience')) return AVAL_FIXOS_IMERSAO;
+  return [];
+}
 let _avalKeys = [];
 
 // Painel de médias do pós-evento (avaliações clicáveis + demais notas)
 function npsMediasHtml(base) {
   const avalMap = npsAvalMap(base);
-  // sempre mostra os fixos + quaisquer outros que apareçam nas respostas
-  const extras = Object.keys(avalMap).filter(k => AVAL_FIXOS.indexOf(k) < 0);
-  _avalKeys = AVAL_FIXOS.concat(extras);
+  // sempre mostra os fixos do evento + quaisquer outros que apareçam nas respostas
+  const fixos = avalFixos();
+  const extras = Object.keys(avalMap).filter(k => fixos.indexOf(k) < 0)
+    .sort((a, b) => (media(avalMap[b] || [{nota:0}])) - (media(avalMap[a] || [{nota:0}])));
+  _avalKeys = fixos.concat(extras);
 
   // demais perguntas de nota (0-10) que não são avaliação de palestrante
   const acc = {};
