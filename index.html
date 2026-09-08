@@ -896,7 +896,7 @@ function renderBoard() {
 }
 
 function cardHtml(c, color) {
-  const wa       = c.phone ? `whatsapp://send?phone=${normalizePhone(c.phone)}` : null;
+  const wa       = c.phone ? waUrl(c.phone) : null;
   const showTries = c.status !== 'confirmou' && c.status !== 'nao_vai';
   const isAlert  = c.tries >= MAX_TRIES && showTries;
   let dots = '';
@@ -908,7 +908,7 @@ function cardHtml(c, color) {
        ondragstart="onDragStart(event,'${safeId}')" ondragend="onDragEnd(event)" onclick="openEdit('${safeId}')">
     <div class="name"><span class="copy-name" onclick="event.stopPropagation();copyName(event)" title="clique para copiar o nome">${esc(c.name)}</span> ${isAlert?'<span class="alert-tag">5x sem resposta</span>':''}</div>
     ${c.prod?`<span class="prod">${esc(c.prod)}</span>`:''}
-    <div class="phone">${esc(c.phone||'sem telefone')} ${wa?`· <a class="wa" href="${wa}" onclick="event.stopPropagation()">WhatsApp</a>`:''}</div>
+    <div class="phone">${esc(c.phone||'sem telefone')} ${wa?`· <a class="wa" href="${wa}" target="_blank" rel="noopener" onclick="event.stopPropagation()">WhatsApp</a> · <a class="wa" href="#" title="copiar número" onclick="copiarNumero(event,'${esc(c.phone)}');return false">📋</a>`:''}</div>
     ${c.note?`<div class="note">${esc(c.note)}</div>`:''}
     ${showTries?`<div class="tries"><div class="tries-dots">${dots}</div>
       <button class="try-btn" onclick="event.stopPropagation();bumpTry('${safeId}')">+1 tentativa</button></div>`:''}
@@ -1582,7 +1582,7 @@ function npsRowsHtml(confirmed) {
     const tempo = String(d.tempo_cliente || '').trim();
     const tags = (prod ? `<span class="nps-tag prod">${esc(prod)}</span>` : '')
                + (tempo ? `<span class="nps-tag tempo">⏳ ${esc(tempo)}</span>` : '');
-    const wa = c.phone ? `<a class="fc-wa" href="whatsapp://send?phone=${normalizePhone(c.phone)}" onclick="event.stopPropagation()" title="Falar no WhatsApp">💬 WhatsApp</a>` : '';
+    const wa = c.phone ? `<a class="fc-wa" href="${waUrl(c.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Falar no WhatsApp Web">💬 WhatsApp</a> <a class="fc-wa" href="#" onclick="copiarNumero(event,'${esc(c.phone)}');return false" title="copiar número">📋</a>` : '';
     return `<div class="nps-row" onclick="openNps('${safeId}')">
       <span class="nps-nota ${cls}">${nota}</span>
       <div class="nps-info">
@@ -1606,7 +1606,7 @@ function npsDetratoresHtml(base) {
     const d = npsDados(c);
     const prod = String(d.produto || c.plano || '').trim();
     const tempo = String(d.tempo_cliente || '').trim();
-    const wa = c.phone ? `<a class="fc-wa" href="whatsapp://send?phone=${normalizePhone(c.phone)}" onclick="event.stopPropagation()">💬 WhatsApp</a>` : '';
+    const wa = c.phone ? `<a class="fc-wa" href="${waUrl(c.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💬 WhatsApp</a> <a class="fc-wa" href="#" onclick="copiarNumero(event,'${esc(c.phone)}');return false" title="copiar número">📋</a>` : '';
     return `<div class="det-card" onclick="openNps('${safeId}')">
       <div class="det-top">
         <span class="nps-nota detrator">${Number(c[f])}</span>
@@ -1817,7 +1817,7 @@ function credFichasCards(confirmed) {
         <span class="chip nps ${npsRespondeuFase(c,'pre')?'on':'off'}" title="Formulário de NPS pré-evento">${npsRespondeuFase(c,'pre')?'✓ NPS':'NPS pendente'}</span>
       </div>
       <div class="fc-acoes">
-        ${c.phone ? `<a class="fc-wa" href="whatsapp://send?phone=${normalizePhone(c.phone)}" onclick="event.stopPropagation()" title="Falar no WhatsApp">💬 WhatsApp</a>` : ''}
+        ${c.phone ? `<a class="fc-wa" href="${waUrl(c.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Falar no WhatsApp Web">💬 WhatsApp</a> <a class="fc-wa" href="#" onclick="copiarNumero(event,'${esc(c.phone)}');return false" title="copiar número">📋</a>` : ''}
         ${!npsRespondeuFase(c,'pre') ? `<button class="fc-cobrar ${c.npsCobrado?'on':''}" onclick="event.stopPropagation();toggleNpsCobrado('${esc(c.id)}')" title="Marcar que você cobrou o preenchimento do NPS">${c.npsCobrado?'✓ NPS cobrado':'📞 cobrar NPS'}</button>` : ''}
       </div>
     </div>`;
@@ -2437,6 +2437,26 @@ function normalizePhone(p) {
   let d = String(p).replace(/\D/g,'');
   if (!d.startsWith('55') && d.length <= 11) d = '55' + d;
   return d;
+}
+
+// Abre o WhatsApp Web (não depende do app instalado)
+function waUrl(p) { return 'https://web.whatsapp.com/send?phone=' + normalizePhone(p); }
+
+// Copia o número (normalizado) para a área de transferência
+function copiarNumero(e, phone) {
+  if (e) e.stopPropagation();
+  const el = e && e.currentTarget;
+  const num = normalizePhone(phone);
+  const done = () => {
+    if (!el) return;
+    const orig = el.textContent;
+    el.textContent = '✓';
+    el.classList.add('copied');
+    setTimeout(() => { el.textContent = orig; el.classList.remove('copied'); }, 1000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(num).then(done).catch(() => { fallbackCopy(num); done(); });
+  } else { fallbackCopy(num); done(); }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
