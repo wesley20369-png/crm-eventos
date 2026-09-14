@@ -872,12 +872,16 @@ function renderStats() {
   const total  = inList.length;
   const conf   = inList.filter(c => c.status === 'confirmou').length;
   const nao    = inList.filter(c => c.status === 'nao_vai').length;
+  const prox   = inList.filter(c => c.status === 'proxima').length;
   const alerts = inList.filter(c => c.tries >= MAX_TRIES && c.status !== 'confirmou' && c.status !== 'nao_vai').length;
   const pct    = total ? Math.round((conf / total) * 100) : 0;
+  const pctProx = total ? Math.round((prox / total) * 100) : 0;
   document.getElementById('stats').innerHTML = `
     <div class="stat"><span class="num">${total}</span><span class="lbl">Nesta lista</span></div>
     <div class="stat"><span class="num">${conf}</span><span class="lbl">Confirmados</span></div>
     <div class="stat"><span class="num">${pct}%</span><span class="lbl">Taxa confirmação</span></div>
+    <div class="stat"><span class="num" style="color:#f0883e">${pctProx}%</span><span class="lbl">Taxa vai p/ próxima</span></div>
+    <div class="stat"><span class="num">${prox}</span><span class="lbl">Vão pra próxima</span></div>
     <div class="stat"><span class="num">${nao}</span><span class="lbl">Não vão</span></div>
     <div class="stat"><span class="num" style="color:${alerts?'#e24b4a':'inherit'}">${alerts}</span><span class="lbl">Esgotaram 5x</span></div>`;
 }
