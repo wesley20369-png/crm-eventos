@@ -31,11 +31,15 @@ module.exports = async (req, res) => {
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const headers = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };
 
+  // evento alvo (ilike) e lista dos novos, configuráveis pela query. Padrão = Imersão / 'novos'.
+  const evPat = (url.searchParams.get('evento') || 'imers').trim();
+  const novaLista = (url.searchParams.get('lista') || 'novos').trim();
+
   try {
-    // 1) evento Imersão
-    const er = await fetch(SB + '/rest/v1/eventos?select=id&nome=ilike.*imers*&limit=1', { headers });
+    // 1) evento alvo
+    const er = await fetch(SB + '/rest/v1/eventos?select=id&nome=ilike.*' + encodeURIComponent(evPat) + '*&limit=1', { headers });
     const ea = await er.json();
-    if (!Array.isArray(ea) || !ea.length) return res.status(200).json({ ok: false, erro: 'evento imersao nao encontrado' });
+    if (!Array.isArray(ea) || !ea.length) return res.status(200).json({ ok: false, erro: 'evento nao encontrado', evento: evPat });
     const evId = ea[0].id;
 
     // 2) clientes existentes do evento
@@ -75,7 +79,7 @@ module.exports = async (req, res) => {
       } else {
         novos.push(Object.assign({
           nome, email, telefone: tel, instagram: ig,
-          lista: 'novos', status: 'confirmou', tentativas: 0, evento_id: evId,
+          lista: novaLista, status: 'confirmou', tentativas: 0, evento_id: evId,
         }, patch));
         // evita duplicar dentro do mesmo lote
         if (email) byEmail[email.toLowerCase()] = 'novo';
