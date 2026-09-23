@@ -156,6 +156,10 @@
   .fc-cobrar { font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-soft); background: var(--surface2); color: var(--ink-soft); }
   .fc-cobrar:hover { border-color: var(--amber); color: var(--amber); }
   .fc-cobrar.on { background: rgba(52,211,153,0.12); color: var(--brand); border-color: rgba(52,211,153,0.35); }
+  .fc-reconf { font-size: 11.5px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-soft); background: var(--surface2); color: var(--ink-soft); cursor: pointer; }
+  .fc-reconf:hover { border-color: var(--ink-soft); }
+  .fc-reconf.enviado { background: rgba(251,191,36,0.14); color: var(--amber); border-color: rgba(251,191,36,0.4); }
+  .fc-reconf.confirmou { background: rgba(52,211,153,0.14); color: var(--brand); border-color: rgba(52,211,153,0.4); }
   /* Stats (evento/vendas) */
   .ev-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .ev-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 16px 18px; }
@@ -523,6 +527,7 @@ function fromDb(row) {
     npsPreDados:    row.nps_pre_dados            || {},
     npsPosDados:    row.nps_pos_dados            || {},
     npsCobrado:     !!row.nps_cobrado,
+    reconfirmacao:  row.reconfirmacao            || '',
     confirmadoEm:   row.confirmado_em            || null,
   };
 }
@@ -542,7 +547,7 @@ const FIELD_MAP = {
   npsPre: 'nps_pre', npsPreObs: 'nps_pre_obs',
   npsPos: 'nps_pos', npsPosObs: 'nps_pos_obs',
   npsPreDados: 'nps_pre_dados', npsPosDados: 'nps_pos_dados',
-  npsCobrado: 'nps_cobrado',
+  npsCobrado: 'nps_cobrado', reconfirmacao: 'reconfirmacao',
 };
 
 // Mapeia objeto do app para linha do banco
@@ -574,7 +579,7 @@ async function fetchEventos() {
 }
 
 // Colunas leves (sem os JSONB pesados do NPS, que são carregados só na aba NPS)
-const COLS_LEVES = 'id,nome,telefone,produto,lista,status,tentativas,observacao,potencial_compra,satisfacao_ecossistema,plano,origem,mentor,vendedor,faturamento,forma_pagamento,instagram,cpf,email,grupo_oficial,confirmacao,presente,horario_chegada,valor_venda,fechou_evento,camiseta,cs,nps_pre,nps_pre_obs,nps_pos,nps_pos_obs,nps_cobrado,confirmado_em,evento_id,atualizado_em,origem_id';
+const COLS_LEVES = 'id,nome,telefone,produto,lista,status,tentativas,observacao,potencial_compra,satisfacao_ecossistema,plano,origem,mentor,vendedor,faturamento,forma_pagamento,instagram,cpf,email,grupo_oficial,confirmacao,presente,horario_chegada,valor_venda,fechou_evento,camiseta,cs,nps_pre,nps_pre_obs,nps_pos,nps_pos_obs,nps_cobrado,reconfirmacao,confirmado_em,evento_id,atualizado_em,origem_id';
 let npsDadosCarregado = false;
 
 async function fetchClients() {
@@ -1740,6 +1745,19 @@ async function toggleNpsCobrado(id) {
   await updateClient(id, { npsCobrado: c.npsCobrado });
 }
 
+// Reconfirmação de ultimato: '' (falta mandar) -> 'enviado' -> 'confirmou' -> ''
+const RECONF_CICLO = { '': 'enviado', 'enviado': 'confirmou', 'confirmou': '' };
+function reconfLabel(v) {
+  return v === 'confirmou' ? '✓ Confirmou' : v === 'enviado' ? '📨 Enviado' : '⏳ Falta mandar';
+}
+async function cycleReconfirmacao(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  c.reconfirmacao = RECONF_CICLO[c.reconfirmacao || ''] || 'enviado';
+  render();
+  await updateClient(id, { reconfirmacao: c.reconfirmacao });
+}
+
 function isCredComplete(c) {
   return !!(c.cpf && c.cpf.trim() && c.email && c.email.trim() && c.instagram && c.instagram.trim());
 }
@@ -1786,6 +1804,9 @@ function fichaPassa(c) {
     case 'nps_ok':     return npsRespondeuFase(c, 'pre');
     case 'nps_pend':   return !npsRespondeuFase(c, 'pre');
     case 'cobrar':     return !npsRespondeuFase(c, 'pre') && !c.npsCobrado;
+    case 'reconf_ok':    return c.reconfirmacao === 'confirmou';
+    case 'reconf_env':   return c.reconfirmacao === 'enviado';
+    case 'reconf_falta': return (c.reconfirmacao || '') === '';
     default:           return true;
   }
 }
@@ -1822,6 +1843,7 @@ function credFichasCards(confirmed) {
       </div>
       <div class="fc-acoes">
         ${c.phone ? `<a class="fc-wa" href="${waUrl(c.phone)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Falar no WhatsApp Web">💬 WhatsApp</a> <a class="fc-wa" href="#" onclick="copiarNumero(event,'${esc(c.phone)}');return false" title="copiar número">📋</a>` : ''}
+        <button class="fc-reconf ${esc(c.reconfirmacao||'')}" onclick="event.stopPropagation();cycleReconfirmacao('${esc(c.id)}')" title="Reconfirmação de ultimato — clique para avançar: Falta mandar → Enviado → Confirmou">${reconfLabel(c.reconfirmacao||'')}</button>
         ${!npsRespondeuFase(c,'pre') ? `<button class="fc-cobrar ${c.npsCobrado?'on':''}" onclick="event.stopPropagation();toggleNpsCobrado('${esc(c.id)}')" title="Marcar que você cobrou o preenchimento do NPS">${c.npsCobrado?'✓ NPS cobrado':'📞 cobrar NPS'}</button>` : ''}
       </div>
     </div>`;
@@ -1837,14 +1859,26 @@ function credFichasHtml(confirmed) {
   const nps = confirmed.filter(c => npsRespondeuFase(c, 'pre')).length;
   const nComp = completos, nIncomp = confirmed.length - completos;
   const nCobrar = confirmed.filter(c => !npsRespondeuFase(c, 'pre') && !c.npsCobrado).length;
+  const nReconfOk    = confirmed.filter(c => c.reconfirmacao === 'confirmou').length;
+  const nReconfEnv   = confirmed.filter(c => c.reconfirmacao === 'enviado').length;
+  const nReconfFalta = confirmed.filter(c => (c.reconfirmacao || '') === '').length;
+  const pctReconf = confirmed.length ? Math.round(nReconfOk / confirmed.length * 100) : 0;
   return `
     <div class="fc-head">
       <div><span class="fc-big">${completos}</span> <span class="fc-sub">de ${confirmed.length} fichas completas</span></div>
       <div class="fc-progress"><div style="width:${pct}%"></div></div>
       <div class="fc-sub" style="white-space:nowrap">📈 NPS respondido: <b style="color:var(--brand)">${nps}</b> de <b>${confirmed.length}</b></div>
     </div>
+    <div class="fc-head" style="margin-top:-6px">
+      <div><span class="fc-big" style="color:var(--brand)">${nReconfOk}</span> <span class="fc-sub">reconfirmaram (de ${confirmed.length})</span></div>
+      <div class="fc-progress"><div style="width:${pctReconf}%"></div></div>
+      <div class="fc-sub" style="white-space:nowrap">📨 Enviado aguardando: <b style="color:var(--amber)">${nReconfEnv}</b> · ⏳ Falta mandar: <b>${nReconfFalta}</b></div>
+    </div>
     <div class="nps-filtros">
       ${fichaChip('todos','Todos', confirmed.length)}
+      ${fichaChip('reconf_ok','✓ Reconfirmaram', nReconfOk)}
+      ${fichaChip('reconf_env','📨 Enviado (aguardando)', nReconfEnv)}
+      ${fichaChip('reconf_falta','⏳ Falta mandar', nReconfFalta)}
       ${fichaChip('completo','✓ Completos', nComp)}
       ${fichaChip('incompleto','! Faltam dados', nIncomp)}
       ${fichaChip('nps_ok','📈 Respondeu NPS', nps)}
