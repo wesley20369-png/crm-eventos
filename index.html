@@ -1501,26 +1501,25 @@ function npsRelatorioTexto() {
   const hoje = new Date().toLocaleDateString('pt-BR');
   const pct = x => resp.length ? Math.round(x / resp.length * 100) : 0;
   const taxa = base.length ? Math.round(confirmed.length / base.length * 100) : 0;
-  const barra = p => '█'.repeat(Math.round(p / 10)) + '░'.repeat(10 - Math.round(p / 10));
-  const zona = nps >= 76 ? '🟢 Zona de Excelência' : nps >= 51 ? '🟢 Zona de Qualidade'
-             : nps >= 1 ? '🟡 Zona de Aperfeiçoamento' : '🔴 Zona Crítica';
-  const linha = '━━━━━━━━━━━━━━━';
+  const fmt = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+  const zona = nps >= 76 ? 'Zona de Excelência' : nps >= 51 ? 'Zona de Qualidade'
+             : nps >= 1 ? 'Zona de Aperfeiçoamento' : 'Zona Crítica';
   const corta = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
-  let t = `📊 *RELATÓRIO DE NPS*\n`;
-  t += `*${evNome}* — ${fase}\n`;
-  t += `🗓️ ${hoje}\n\n`;
+  let t = `*RELATÓRIO DE NPS*\n`;
+  t += `${evNome} — ${fase}\n`;
+  t += `Data: ${hoje}\n\n`;
 
-  t += `${linha}\n*RESULTADO GERAL*\n`;
-  t += `⭐ NPS: *${nps}*  (${zona})\n`;
-  t += `📈 Nota média: *${notaMedia}/10*\n`;
-  t += `🗣️ Responderam: *${confirmed.length}* de ${base.length} confirmados (${taxa}%)\n\n`;
+  t += `*RESULTADO GERAL*\n`;
+  t += `NPS: *${nps}* (${zona})\n`;
+  t += `Nota média: *${notaMedia === '—' ? '—' : fmt(Number(notaMedia))}* de 10\n`;
+  t += `Responderam: *${confirmed.length}* de ${base.length} confirmados (${taxa}%)\n\n`;
 
-  t += `*SATISFAÇÃO (quem deu nota: ${resp.length})*\n`;
-  t += `😀 Promotores (9–10): *${promo}* · ${pct(promo)}%\n   ${barra(pct(promo))}\n`;
-  t += `😐 Neutros (7–8): *${neutro}* · ${pct(neutro)}%\n   ${barra(pct(neutro))}\n`;
-  t += `😡 Detratores (0–6): *${detr}* · ${pct(detr)}%\n   ${barra(pct(detr))}\n\n`;
-  t += `_NPS = % promotores − % detratores. Acima de 75 é excelente._\n`;
+  t += `*SATISFAÇÃO* (base: ${resp.length} notas)\n`;
+  t += `Promotores (9 a 10): *${promo}* — ${pct(promo)}%\n`;
+  t += `Neutros (7 e 8): *${neutro}* — ${pct(neutro)}%\n`;
+  t += `Detratores (0 a 6): *${detr}* — ${pct(detr)}%\n`;
+  t += `NPS = percentual de promotores menos percentual de detratores. Acima de 75 é considerado excelente.\n`;
 
   if (npsMode === 'pos') {
     const avalMap = npsAvalMap(base);
@@ -1529,9 +1528,8 @@ function npsRelatorioTexto() {
     const linhas = keys.map(k => { const arr = avalMap[k] || []; return arr.length ? { k, m: media(arr), n: arr.length } : null; })
                        .filter(Boolean).sort((a, b) => b.m - a.m);
     if (linhas.length) {
-      t += `\n${linha}\n*PALESTRANTES / TIME* (média /10)\n`;
-      const med = ['🥇', '🥈', '🥉'];
-      linhas.forEach((x, i) => { t += `${med[i] || (i + 1) + 'º'} ${x.k}: *${x.m.toFixed(1)}*\n`; });
+      t += `\n*AVALIAÇÃO DOS PALESTRANTES / TIME* (média de 0 a 10)\n`;
+      linhas.forEach((x, i) => { t += `${i + 1}. ${x.k}: *${fmt(x.m)}*\n`; });
     }
     const acc = {};
     base.forEach(c => {
@@ -1546,13 +1544,12 @@ function npsRelatorioTexto() {
     const outras = Object.keys(acc).map(k => ({ k, m: acc[k].reduce((s, x) => s + x, 0) / acc[k].length }))
                          .sort((a, b) => b.m - a.m);
     if (outras.length) {
-      t += `\n${linha}\n*OUTRAS AVALIAÇÕES* (média /10)\n`;
-      outras.forEach(x => { t += `• ${x.k}: *${x.m.toFixed(1)}*\n`; });
+      t += `\n*OUTRAS AVALIAÇÕES* (média de 0 a 10)\n`;
+      outras.forEach(x => { t += `- ${x.k}: *${fmt(x.m)}*\n`; });
     }
   } else {
-    // Pré: resumo de perfil dos inscritos (item mais citado de cada pergunta-chave)
-    const perfil = [['faturamento', '💰 Faturamento'], ['objetivo', '🎯 Objetivo 12 meses'],
-                    ['gargalo', '🚧 Maior gargalo'], ['area_ajuda', '🆘 Precisa de ajuda em']];
+    const perfil = [['faturamento', 'Faturamento mensal'], ['objetivo', 'Objetivo em 12 meses'],
+                    ['gargalo', 'Maior gargalo'], ['area_ajuda', 'Área que mais precisa de ajuda']];
     const topDe = key => {
       const cont = {};
       base.forEach(c => { const v = String((npsDados(c) || {})[key] || '').trim(); if (v) cont[v] = (cont[v] || 0) + 1; });
@@ -1561,11 +1558,10 @@ function npsRelatorioTexto() {
       return { top, n: cont[top] };
     };
     let bloco = '';
-    perfil.forEach(([k, lbl]) => { const r = topDe(k); if (r) bloco += `• ${lbl}: *${corta(r.top, 40)}* (${r.n})\n`; });
-    if (bloco) t += `\n${linha}\n*PERFIL DOS INSCRITOS* (mais citado)\n${bloco}`;
+    perfil.forEach(([k, lbl]) => { const r = topDe(k); if (r) bloco += `- ${lbl}: *${corta(r.top, 45)}* (${r.n})\n`; });
+    if (bloco) t += `\n*PERFIL DOS INSCRITOS* (resposta mais citada)\n${bloco}`;
   }
 
-  // Destaques: 1 comentário de promotor e 1 de detrator (quando houver)
   const comentario = filtro => {
     const arr = resp.filter(filtro).map(c => String(c[fo] || '').trim()).filter(s => s.length > 3);
     if (!arr.length) return null;
@@ -1574,12 +1570,12 @@ function npsRelatorioTexto() {
   const cp = comentario(c => Number(c[f]) >= 9);
   const cd = comentario(c => Number(c[f]) < 7);
   if (cp || cd) {
-    t += `\n${linha}\n*DESTAQUES*\n`;
-    if (cp) t += `💬 Promotor: "${corta(cp, 140)}"\n`;
-    if (cd) t += `⚠️ A melhorar: "${corta(cd, 140)}"\n`;
+    t += `\n*DESTAQUES*\n`;
+    if (cp) t += `Comentário de promotor: "${corta(cp, 160)}"\n`;
+    if (cd) t += `Ponto de melhoria: "${corta(cd, 160)}"\n`;
   }
 
-  t += `\n— _Relatório gerado pelo Eventos · CX_`;
+  t += `\nRelatório gerado por Eventos · CX`;
   return t;
 }
 
