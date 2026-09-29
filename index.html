@@ -1488,7 +1488,7 @@ function closeAval() { document.getElementById('avalModalBg').classList.remove('
 function npsRelatorioTexto() {
   const ev = eventos.find(e => e.id === currentEvento);
   const evNome = ev ? ev.nome : 'Evento';
-  const base = credConfirmed();
+  const base = npsBase();
   const confirmed = base.filter(npsRespondeu);
   const f = npsField(), fo = npsObsField();
   const resp = confirmed.filter(c => hasNota(c[f]));
@@ -1587,12 +1587,19 @@ function copiarRelatorioNps(btn) {
   } else { fallbackCopy(txt); done(); }
 }
 
+// População da aba NPS: confirmados + quem respondeu a fase atual (independe de "confirmado")
+function npsBase() {
+  const ids = new Set(credConfirmed().map(c => c.id));
+  clients.forEach(c => { if (npsRespondeuFase(c, npsMode)) ids.add(c.id); });
+  return clients.filter(c => ids.has(c.id));
+}
+
 function renderNps() {
   destroyCharts();
   const board = document.getElementById('board');
   board.style.display = 'block';
-  const base = credConfirmed();                // confirmados do evento
-  const confirmed = base.filter(npsRespondeu); // confirmados que responderam
+  const base = npsBase();                       // confirmados + respondentes da fase
+  const confirmed = base.filter(npsRespondeu); // quem respondeu
   const f = npsField();
   const resp = confirmed.filter(c => hasNota(c[f]));
   const promo = resp.filter(c => Number(c[f]) >= 9).length;

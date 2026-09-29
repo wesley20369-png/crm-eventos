@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
       } else {
         novos.push(Object.assign({
           nome, email, telefone: tel, instagram: ig,
-          lista: novaLista, status: 'confirmou', tentativas: 0, evento_id: evId,
+          lista: novaLista, status: 'em_aberto', tentativas: 0, evento_id: evId,
         }, patch));
         // evita duplicar dentro do mesmo lote
         if (email) byEmail[email.toLowerCase()] = 'novo';
