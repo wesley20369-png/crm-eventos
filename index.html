@@ -1484,6 +1484,70 @@ function verAval(i) {
 }
 function closeAval() { document.getElementById('avalModalBg').classList.remove('show'); }
 
+// Monta um relatório de NPS em texto (emojis + barrinhas) pra colar no WhatsApp
+function npsRelatorioTexto() {
+  const ev = eventos.find(e => e.id === currentEvento);
+  const evNome = ev ? ev.nome : 'Evento';
+  const base = credConfirmed();
+  const confirmed = base.filter(npsRespondeu);
+  const f = npsField();
+  const resp = confirmed.filter(c => hasNota(c[f]));
+  const promo = resp.filter(c => Number(c[f]) >= 9).length;
+  const neutro = resp.filter(c => Number(c[f]) >= 7 && Number(c[f]) < 9).length;
+  const detr = resp.filter(c => Number(c[f]) < 7).length;
+  const nps = resp.length ? Math.round(((promo - detr) / resp.length) * 100) : 0;
+  const notaMedia = resp.length ? (resp.reduce((s, c) => s + Number(c[f]), 0) / resp.length).toFixed(1) : '—';
+  const fase = npsMode === 'pos' ? 'Pós-evento' : 'Pré-evento';
+  const pct = x => resp.length ? Math.round(x / resp.length * 100) : 0;
+  const barra = p => '█'.repeat(Math.round(p / 10)) + '░'.repeat(10 - Math.round(p / 10));
+
+  let t = `📊 *NPS · ${evNome}*\n`;
+  t += `_${fase} · ${confirmed.length} de ${base.length} responderam_\n\n`;
+  t += `⭐ NPS *${nps}*   |   nota média *${notaMedia}/10*\n\n`;
+  t += `😀 Promotores  *${pct(promo)}%*  ${barra(pct(promo))} (${promo})\n`;
+  t += `😐 Neutros     *${pct(neutro)}%*  ${barra(pct(neutro))} (${neutro})\n`;
+  t += `😡 Detratores  *${pct(detr)}%*  ${barra(pct(detr))} (${detr})\n`;
+
+  if (npsMode === 'pos') {
+    const avalMap = npsAvalMap(base);
+    const fixos = avalFixos();
+    const keys = fixos.concat(Object.keys(avalMap).filter(k => fixos.indexOf(k) < 0));
+    const linhas = keys.map(k => { const arr = avalMap[k] || []; return arr.length ? { k, m: media(arr) } : null; })
+                       .filter(Boolean).sort((a, b) => b.m - a.m);
+    if (linhas.length) {
+      t += `\n🎤 *Palestrantes / time* (média /10)\n`;
+      linhas.forEach(x => { t += `• ${x.k}: *${x.m.toFixed(1)}*\n`; });
+    }
+    const acc = {};
+    base.forEach(c => {
+      const d = c.npsPosDados || {};
+      Object.keys(d).forEach(k => {
+        if (k === 'aval') return;
+        const bruto = String(d[k]).trim();
+        const nn = parseInt(bruto.replace(/\D/g, ''));
+        if (!isNaN(nn) && nn >= 0 && nn <= 10 && bruto.length <= 4) (acc[k] = acc[k] || []).push(nn);
+      });
+    });
+    const outras = Object.keys(acc).map(k => ({ k, m: acc[k].reduce((s, x) => s + x, 0) / acc[k].length }))
+                         .sort((a, b) => b.m - a.m);
+    if (outras.length) {
+      t += `\n📈 *Outras avaliações* (média /10)\n`;
+      outras.forEach(x => { t += `• ${x.k}: *${x.m.toFixed(1)}*\n`; });
+    }
+  }
+
+  t += `\n— Eventos · CX`;
+  return t;
+}
+
+function copiarRelatorioNps(btn) {
+  const txt = npsRelatorioTexto();
+  const done = () => { if (btn) { const o = btn.textContent; btn.textContent = '✓ copiado!'; setTimeout(() => { btn.textContent = o; }, 1600); } };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done).catch(() => { fallbackCopy(txt); done(); });
+  } else { fallbackCopy(txt); done(); }
+}
+
 function renderNps() {
   destroyCharts();
   const board = document.getElementById('board');
@@ -1507,6 +1571,7 @@ function renderNps() {
         <button class="seg ${npsMode==='pos'?'on':''}" onclick="setNpsMode('pos')">🎉 Pós-evento</button>
       </div>
       <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+        <button class="primary" onclick="copiarRelatorioNps(this)">📱 Relatório p/ WhatsApp</button>
         <button onclick="copiarNps()">📊 Copiar p/ Sheets</button>
       </div>
     </div>
