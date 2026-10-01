@@ -160,6 +160,29 @@
   .fc-reconf:hover { border-color: var(--ink-soft); }
   .fc-reconf.enviado { background: rgba(251,191,36,0.14); color: var(--amber); border-color: rgba(251,191,36,0.4); }
   .fc-reconf.confirmou { background: rgba(52,211,153,0.14); color: var(--brand); border-color: rgba(52,211,153,0.4); }
+  /* Estoque */
+  .est-head { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+  .est-head h2 { font-size:22px; margin:0; }
+  .est-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:24px; }
+  .est-kpi { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+  .est-kpi .v { font-size:30px; font-weight:800; line-height:1; }
+  .est-kpi .l { font-size:12px; color:var(--ink-soft); margin-top:6px; text-transform:uppercase; letter-spacing:.04em; font-weight:600; }
+  .est-cat { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin:22px 0 10px; display:flex; align-items:center; gap:8px; }
+  .est-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+  .est-card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .est-card.low { border-color:rgba(248,113,113,.55); box-shadow:0 0 0 1px rgba(248,113,113,.25) inset; }
+  .est-card .nome { font-size:15px; font-weight:700; }
+  .est-card .obs { font-size:12px; color:var(--ink-soft); }
+  .est-qtd-row { display:flex; align-items:center; justify-content:center; gap:14px; margin:4px 0; }
+  .est-qtd { font-size:40px; font-weight:800; min-width:70px; text-align:center; }
+  .est-qtd small { font-size:14px; font-weight:600; color:var(--ink-soft); }
+  .est-btn { width:40px; height:40px; border-radius:11px; border:1px solid var(--line-soft); background:var(--bg2); color:var(--ink); font-size:22px; font-weight:700; cursor:pointer; line-height:1; }
+  .est-btn:hover { border-color:var(--brand); color:var(--brand); }
+  .est-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--ink-soft); }
+  .est-lowtag { color:#f87171; font-weight:700; }
+  .est-oktag { color:var(--brand); font-weight:600; }
+  .est-ic { background:none; border:none; cursor:pointer; font-size:14px; opacity:.6; }
+  .est-ic:hover { opacity:1; }
   /* Stats (evento/vendas) */
   .ev-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
   .ev-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 16px 18px; }
@@ -327,6 +350,7 @@
   <select id="eventoSelect" onchange="trocarEvento(this.value)"></select>
   <button id="evStarBtn" onclick="marcarEventoAtivo()" title="O evento ativo é o que recebe entradas automáticas (Onprofit)">☆ tornar ativo</button>
   <button onclick="abrirNovoEvento()">+ Novo evento</button>
+  <button onclick="abrirEstoque()" title="Controle de estoque dos materiais dos eventos">📦 Estoque</button>
 </div>
 
 <div class="banner">
@@ -488,6 +512,9 @@ let eventos = [];             // lista de eventos
 let currentEvento = localStorage.getItem('crm_evento_atual') || null; // evento selecionado
 let checklist = [];            // itens do checklist do evento atual
 let checklistEvento = null;    // de qual evento o checklist carregado é
+let estoque = [];              // itens de estoque (global, todos os eventos)
+let modoEstoque = false;       // tela de estoque aberta?
+let estoqueErro = '';
 
 // Mapeia linha do banco para objeto do app
 function fromDb(row) {
@@ -664,6 +691,11 @@ function setupRealtime() {
       if (activeList === 'checklist') { await fetchChecklist(); render(); }
     })
     .subscribe();
+  db.channel('estoque-all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, async () => {
+      if (modoEstoque) { await fetchEstoque(); renderEstoque(); }
+    })
+    .subscribe();
   if (userRole === 'admin') {
     db.channel('eventos-all')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'eventos' }, async () => {
@@ -698,6 +730,7 @@ function setSyncing(val) {
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 
 function render() {
+  if (modoEstoque) { renderEstoque(); return; }
   if (userRole === 'mentor') { renderMentorApp(); return; }
   if (userRole === 'lider') {
     activeList = 'nps';
@@ -1164,6 +1197,154 @@ async function checklistDel(id) {
   await db.from('checklist').delete().eq('id', id);
   await fetchChecklist();
   render();
+}
+
+// ─── ESTOQUE ──────────────────────────────────────────────────────────────────
+const EST_CATS = ['Core Sales', 'Método Audience', 'Audience Club', 'Core Experience Tênis', 'Geral'];
+
+async function fetchEstoque() {
+  estoqueErro = '';
+  const { data, error } = await db.from('estoque').select('*')
+    .order('categoria', { ascending: true }).order('item', { ascending: true });
+  estoque = error ? [] : (data || []);
+  if (error) estoqueErro = error.message || String(error);
+}
+
+async function abrirEstoque() {
+  modoEstoque = true;
+  await fetchEstoque();
+  renderEstoque();
+}
+function fecharEstoque() { modoEstoque = false; render(); }
+
+function renderEstoque() {
+  document.getElementById('stats').style.display = 'none';
+  document.getElementById('tabs').innerHTML = '';
+  const board = document.getElementById('board');
+  board.style.display = 'block';
+
+  if (estoqueErro) {
+    board.innerHTML = `<div style="max-width:700px;margin:20px auto;background:var(--surface);border:1px solid var(--red);border-radius:14px;padding:20px">
+      <button onclick="fecharEstoque()" style="margin-bottom:12px">← Voltar</button>
+      <div style="font-weight:700;color:var(--red);margin-bottom:8px">Não foi possível carregar o estoque</div>
+      <div style="font-size:13px;color:var(--ink-soft)">${esc(estoqueErro)}</div>
+      <div style="font-size:13px;margin-top:10px">Se diz <b>relation "estoque" does not exist</b>, rode o SQL de criação da tabela <code>estoque</code>.</div>
+    </div>`;
+    return;
+  }
+
+  const totalItens = estoque.length;
+  const totalUnid = estoque.reduce((s, i) => s + (Number(i.quantidade) || 0), 0);
+  const baixos = estoque.filter(i => (Number(i.quantidade) || 0) <= (Number(i.minimo) || 0)).length;
+
+  const grupos = {};
+  estoque.forEach(i => { const c = i.categoria || 'Geral'; (grupos[c] = grupos[c] || []).push(i); });
+  const ordem = [...EST_CATS.filter(c => grupos[c]), ...Object.keys(grupos).filter(c => !EST_CATS.includes(c))];
+  const catOptions = EST_CATS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+
+  let html = `
+    <div class="est-head">
+      <button onclick="fecharEstoque()">← Voltar</button>
+      <h2>📦 Estoque</h2>
+    </div>
+    <div class="est-kpis">
+      <div class="est-kpi"><div class="v">${totalItens}</div><div class="l">Itens cadastrados</div></div>
+      <div class="est-kpi"><div class="v">${totalUnid}</div><div class="l">Unidades no total</div></div>
+      <div class="est-kpi"><div class="v" style="color:${baixos?'#f87171':'var(--brand)'}">${baixos}</div><div class="l">Em estoque baixo</div></div>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:20px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="estItem" placeholder="Novo item (ex: Crachá, Caneta, Camiseta P…)" style="flex:1;min-width:180px;font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)">
+      <select id="estCat" style="font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)">${catOptions}</select>
+      <input id="estQtd" type="number" value="0" title="Quantidade" style="width:90px;font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)">
+      <input id="estUnid" placeholder="un" title="Unidade" style="width:80px;font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)">
+      <input id="estMin" type="number" value="0" title="Estoque mínimo (alerta)" placeholder="mín" style="width:80px;font-size:14px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:9px;background:var(--bg2);color:var(--ink)">
+      <button class="primary" onclick="estoqueAdd()">+ Adicionar</button>
+    </div>`;
+
+  if (!totalItens) {
+    html += `<div style="text-align:center;color:var(--ink-soft);padding:30px">Nenhum item ainda. Adicione o primeiro acima. 👆</div>`;
+  }
+
+  ordem.forEach(cat => {
+    const itens = grupos[cat];
+    const lowCat = itens.filter(i => (Number(i.quantidade) || 0) <= (Number(i.minimo) || 0)).length;
+    html += `<div class="est-cat">${esc(cat)} <span style="color:var(--brand)">(${itens.length})</span>${lowCat ? ` <span class="est-lowtag">· ${lowCat} baixo</span>` : ''}</div><div class="est-grid">`;
+    itens.forEach(i => {
+      const q = Number(i.quantidade) || 0, mn = Number(i.minimo) || 0;
+      const low = q <= mn;
+      html += `
+        <div class="est-card ${low ? 'low' : ''}">
+          <div class="nome">${esc(i.item)}</div>
+          <div class="est-qtd-row">
+            <button class="est-btn" onclick="estoqueQtd(${i.id}, -1)">−</button>
+            <div class="est-qtd" style="color:${low ? '#f87171' : 'var(--ink)'}">${q}<small> ${esc(i.unidade || '')}</small></div>
+            <button class="est-btn" onclick="estoqueQtd(${i.id}, 1)">+</button>
+          </div>
+          <div class="est-foot">
+            <span>${low ? '<span class="est-lowtag">⚠ estoque baixo</span>' : '<span class="est-oktag">✓ ok</span>'}${mn ? ` · mín ${mn}` : ''}</span>
+            <span>
+              <button class="est-ic" onclick="estoqueEdit(${i.id})" title="Editar">✏️</button>
+              <button class="est-ic" onclick="estoqueDel(${i.id})" title="Apagar">🗑️</button>
+            </span>
+          </div>
+          ${i.obs ? `<div class="obs">${esc(i.obs)}</div>` : ''}
+        </div>`;
+    });
+    html += `</div>`;
+  });
+
+  board.innerHTML = html;
+}
+
+async function estoqueAdd() {
+  const item = (document.getElementById('estItem').value || '').trim();
+  if (!item) { document.getElementById('estItem').focus(); return; }
+  const categoria = document.getElementById('estCat').value || 'Geral';
+  const quantidade = parseInt(document.getElementById('estQtd').value) || 0;
+  const minimo = parseInt(document.getElementById('estMin').value) || 0;
+  const unidade = (document.getElementById('estUnid').value || '').trim();
+  const { error } = await db.from('estoque').insert({ item, categoria, quantidade, minimo, unidade });
+  if (error) { alert('Erro ao adicionar: ' + error.message); return; }
+  await fetchEstoque();
+  renderEstoque();
+}
+
+async function estoqueQtd(id, delta) {
+  const it = estoque.find(x => x.id === id);
+  if (!it) return;
+  const novo = Math.max(0, (Number(it.quantidade) || 0) + delta);
+  it.quantidade = novo; // otimista
+  renderEstoque();
+  await db.from('estoque').update({ quantidade: novo, atualizado_em: new Date().toISOString() }).eq('id', id);
+}
+
+async function estoqueEdit(id) {
+  const it = estoque.find(x => x.id === id);
+  if (!it) return;
+  const nome = prompt('Nome do item:', it.item); if (nome === null) return;
+  const q = prompt('Quantidade:', it.quantidade); if (q === null) return;
+  const mn = prompt('Estoque mínimo (alerta quando chegar nele ou abaixo):', it.minimo); if (mn === null) return;
+  const un = prompt('Unidade (ex: un, cx, kg):', it.unidade || ''); if (un === null) return;
+  const patch = {
+    item: nome.trim() || it.item,
+    quantidade: parseInt(q) || 0,
+    minimo: parseInt(mn) || 0,
+    unidade: un.trim(),
+    atualizado_em: new Date().toISOString(),
+  };
+  await db.from('estoque').update(patch).eq('id', id);
+  await fetchEstoque();
+  renderEstoque();
+}
+
+async function estoqueDel(id) {
+  const it = estoque.find(x => x.id === id);
+  if (!it) return;
+  if (!confirm('Apagar "' + it.item + '" do estoque?')) return;
+  await db.from('estoque').delete().eq('id', id);
+  await fetchEstoque();
+  renderEstoque();
 }
 
 function renderDashboard() {
