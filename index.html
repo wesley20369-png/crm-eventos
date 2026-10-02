@@ -671,10 +671,22 @@ async function deleteClient(id) {
 
 // Recarrega no máximo 1 vez a cada 2,5s, mesmo com muitas mudanças seguidas
 // (evita recarregar a base inteira centenas de vezes durante importações em massa)
+// true quando o usuário está digitando num campo (pra não redesenhar e apagar o que ele escreve)
+function digitando() {
+  const el = document.activeElement;
+  if (!el) return false;
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable === true;
+}
+
 let _refetchTimer = null;
 function agendarFetchClients() {
   if (_refetchTimer) return;
-  _refetchTimer = setTimeout(() => { _refetchTimer = null; fetchClients(); }, 2500);
+  const tentar = () => {
+    if (digitando()) { _refetchTimer = setTimeout(tentar, 2000); return; } // adia enquanto digita
+    _refetchTimer = null;
+    fetchClients();
+  };
+  _refetchTimer = setTimeout(tentar, 2500);
 }
 
 // Subscrição de tempo real
@@ -688,12 +700,16 @@ function setupRealtime() {
     });
   db.channel('checklist-all')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'checklist' }, async () => {
-      if (activeList === 'checklist') { await fetchChecklist(); render(); }
+      if (activeList !== 'checklist') return;
+      if (digitando()) { setTimeout(async () => { if (activeList === 'checklist') { await fetchChecklist(); render(); } }, 2500); return; }
+      await fetchChecklist(); render();
     })
     .subscribe();
   db.channel('estoque-all')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, async () => {
-      if (modoEstoque) { await fetchEstoque(); renderEstoque(); }
+      if (!modoEstoque) return;
+      if (digitando()) { setTimeout(async () => { if (modoEstoque) { await fetchEstoque(); renderEstoque(); } }, 2500); return; }
+      await fetchEstoque(); renderEstoque();
     })
     .subscribe();
   if (userRole === 'admin') {
