@@ -745,7 +745,25 @@ function setSyncing(val) {
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
 
+// Envelope: preserva foco/cursor/texto do campo ativo ao redesenhar
 function render() {
+  const a = document.activeElement;
+  const keep = (a && a.id && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'))
+    ? { id: a.id, s: a.selectionStart, e: a.selectionEnd, v: a.value } : null;
+  renderCore();
+  if (keep) {
+    const el = document.getElementById(keep.id);
+    if (el && el !== document.activeElement) {
+      try {
+        if (el.value !== keep.v && (el.value === '' || keep.v.startsWith(el.value) || el.value.startsWith(keep.v))) el.value = keep.v;
+        el.focus();
+        if (keep.s != null && el.setSelectionRange) el.setSelectionRange(keep.s, keep.e);
+      } catch (_) {}
+    }
+  }
+}
+
+function renderCore() {
   if (modoEstoque) { renderEstoque(); return; }
   if (userRole === 'mentor') { renderMentorApp(); return; }
   if (userRole === 'lider') {
