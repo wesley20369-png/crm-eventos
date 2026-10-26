@@ -2574,27 +2574,25 @@ function credRowsTenis() {
 // Linhas no formato exato da planilha do Google (mesma ordem de colunas)
 function credRows() {
   if (isTenisEvent()) return credRowsTenis();
-  return credConfirmed().map((c, i) => ({
-    'Nº': i + 1,
-    'Nome': titleCase(c.name),
-    'Potencial de compra': c.potencial || '',
-    'Satisfação no Ecossistema': c.satisfacao || '',
-    'Plano': c.plano || '',
-    'Origem': c.origem || '',
-    'Mentor': c.mentor || '',
-    'Vendedor': c.vendedor || '',
-    'Faturamento': c.faturamento || '',
-    'Forma de Pagamento': c.formaPagamento || '',
-    'QTD': '',
-    'Instagram': c.instagram || '',
-    'CPF': c.cpf || '',
-    'Email': c.email || '',
-    'Telefone': c.phone || '',
-    'Grupo Oficial': c.grupoOficial ? 'Sim' : 'Não',
-    'Confirmação': c.confirmacao ? 'Sim' : 'Não',
-    'Presença': c.presente ? ('Sim' + (c.horarioChegada ? ' ' + new Date(c.horarioChegada).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '')) : 'Não',
-    'CS': c.cs || '',
-  }));
+  return credConfirmed().map((c, i) => {
+    const d = c.npsPreDados || {};
+    const faturamento = String(d.faturamento || '').trim();   // vem do NPS pré
+    return {
+      'Nº': i + 1,
+      'Nome': titleCase(c.name),
+      'Plano': c.plano || '',
+      'Origem': c.origem || '',
+      'CS': c.cs || '',
+      'Mentor': c.mentor || '',
+      'Vendedor': c.vendedor || '',
+      'Instagram': c.instagram || '',
+      'Potencial de compra': faturamento || c.potencial || '',
+      'Quantidade Seguidores': c.seguidores || '',
+      'CPF': c.cpf || '',
+      'Email': c.email || '',
+      'Telefone': c.phone || '',
+    };
+  });
 }
 
 // Copia em formato tabela (TSV) pra colar direto no Google Sheets
